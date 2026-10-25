@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Luma Launcher</string>
+    <string name="a11y_desc">Нужна, чтобы кнопка «Домой» на пульте открывала Luma Launcher.</string>
+</resources>

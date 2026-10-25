@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luma Launcher</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+<script>(function(){var s=document.getElementById('stage');function fit(){var d=document.documentElement,W=d.clientWidth||innerWidth,H=d.clientHeight||innerHeight;if(!W||!H)return;var k=Math.min(W/1920,H/1080);s.style.transform='translate('+(W-1920*k)/2+'px,'+(H-1080*k)/2+'px) scale('+k+')';}fit();addEventListener('resize',fit);})()</script>
+  <div id="aurora"><i></i><i></i></div>
+  <main id="page"></main>
+  <header id="top"><div class="pill"><span id="net" class="hidden" title="Нет интернета"><svg viewBox="0 0 24 24"><path d="M2.5 9a15 15 0 0 1 19 0M5.8 12.6a10 10 0 0 1 12.4 0M9 16.2a5 5 0 0 1 6 0"/><circle cx="12" cy="19.6" r=".9" fill="currentColor"/><path d="M3.5 3.5l17 17"/></svg></span><span id="wx" style="display:none"></span><span id="clock"></span><button class="ib f" data-a="settings" aria-label="Настройки"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div></header>
+  <section id="set" class="hidden"></section>
+  <section id="all" class="hidden"></section>
+  <section id="menu" class="hidden"></section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

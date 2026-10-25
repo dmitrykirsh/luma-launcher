@@ -1,0 +1,138 @@
+/* Luma Launcher: оформление как в Luma (палитра, шрифты Unbounded и Inter, розовый градиент).
+   Интерфейс рассчитан на 1920×1080, сцена масштабируется под окно. Анимируются только transform и opacity, как в Luma TV. */
+:root{
+  --bg:#0B0C10; --surface:#181A20; --surface-2:#21242C; --primary:#FF3366; --accent:#FFB800;
+  --text:#F8F9FA; --muted:#8E95A5; --line:rgba(248,249,250,.09);
+  --grad:linear-gradient(135deg,#FF3366,#FF4F7E);
+  --display:'Unbounded','Inter',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif; --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;color:var(--text);font-family:var(--body);font-size:24px}
+button{font:inherit;color:inherit;border:0;background:none;outline:none}
+.hidden{display:none!important}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--bg)}
+
+/* фоновое переливание из Luma: два больших слоя с градиентом медленно плывут (только transform, без размытия и фильтров) */
+#aurora{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;contain:strict}
+#aurora i{position:absolute;width:1500px;height:1500px;border-radius:50%;backface-visibility:hidden}
+#aurora i:nth-child(1){left:-500px;top:-600px;background:radial-gradient(circle,rgba(255,51,102,.16),rgba(255,51,102,.04) 45%,transparent 68%);animation:auroraA 38s ease-in-out infinite alternate}
+#aurora i:nth-child(2){right:-600px;bottom:-700px;background:radial-gradient(circle,rgba(255,150,40,.12),rgba(120,60,255,.05) 48%,transparent 68%);animation:auroraB 46s ease-in-out infinite alternate}
+@keyframes auroraA{0%{transform:translate3d(0,0,0)}50%{transform:translate3d(620px,260px,0) scale(1.08)}100%{transform:translate3d(260px,520px,0)}}
+@keyframes auroraB{0%{transform:translate3d(0,0,0)}50%{transform:translate3d(-640px,-300px,0) scale(1.1)}100%{transform:translate3d(-220px,-560px,0)}}
+
+#page{position:absolute;left:0;top:0;width:1920px;z-index:1;transition:transform .38s var(--ease)}
+
+/* верхняя панель: затемнена, чтобы часы и шестерёнка читались на светлых картинках */
+#top{position:absolute;top:0;left:0;right:0;height:170px;z-index:10;display:flex;justify-content:flex-end;align-items:center;padding:54px 96px 0 96px;pointer-events:none;transition:opacity .25s}
+.pill{display:flex;align-items:center;gap:22px;padding:8px 10px 8px 30px;border-radius:46px;background:rgba(8,9,12,.66)}
+#clock{font:600 32px var(--body);letter-spacing:.3px}
+#wx{font:600 30px var(--body)}
+#net{display:grid;place-items:center;color:#FF6B8A}
+#net svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ib{width:68px;height:68px;border-radius:34px;display:grid;place-items:center;background:rgba(248,249,250,.12);transition:transform .2s var(--ease)}
+.ib svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ib.on{background:var(--grad);color:#fff;box-shadow:0 8px 28px rgba(255,51,102,.35);transform:scale(1.1)}
+
+/* кнопки как в Luma */
+.btn{height:64px;padding:0 36px;border-radius:18px;display:inline-flex;align-items:center;gap:12px;background:var(--surface-2);box-shadow:inset 0 0 0 1px rgba(248,249,250,.1);font:600 25px var(--body);white-space:nowrap;transition:transform .2s var(--ease)}
+.btn svg{width:26px;height:26px;fill:currentColor}
+.btn.primary{background:var(--grad);box-shadow:0 8px 28px rgba(255,51,102,.35)}
+.btn.on{background:var(--grad);color:#fff;box-shadow:0 8px 28px rgba(255,51,102,.45);transform:scale(1.05)}
+
+/* баннер: скруглённая карточка, как на главной Luma */
+#hero{position:relative;margin:36px 48px 0;height:540px;border-radius:28px;overflow:hidden;background:var(--surface)}
+#hero.off{height:110px;margin:0;background:none}
+#hero.off>*{display:none}
+.hbgs,.hb{position:absolute;inset:0}
+.hb{opacity:0;transition:opacity .8s ease}
+.hb.on{opacity:1}
+.hbi{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block}
+.hb.hbp{background:radial-gradient(900px 500px at 80% 40%,#2a2d38,var(--surface))}
+.hbq{position:absolute;right:90px;top:34px;height:452px;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.hshade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,12,16,.94) 0,rgba(11,12,16,.6) 40%,rgba(11,12,16,0) 75%),linear-gradient(transparent 55%,rgba(11,12,16,.75))}
+.hin{position:absolute;left:56px;bottom:64px;width:900px}
+.hin.sw{animation:up .5s var(--ease) both}
+@keyframes up{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
+.htag{display:flex;align-items:center;gap:10px;color:var(--primary);font:600 21px var(--body);letter-spacing:2px;text-transform:uppercase}
+.htag svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linejoin:round}
+.htitle{font:700 56px/1.12 var(--display);letter-spacing:-.5px;margin:12px 0 14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hmeta{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font:500 24px var(--body);margin-bottom:2px}
+.hmeta .c{padding:5px 16px;border-radius:12px;background:rgba(248,249,250,.1);box-shadow:inset 0 0 0 1px rgba(248,249,250,.1);font:600 21px var(--body)}
+.hmeta .g{color:var(--accent);font-weight:600}
+.hdesc{margin-top:16px;font:400 24px/1.45 var(--body);color:#d6d9e0;max-width:820px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hdesc:empty{display:none}
+.hprog{width:420px;height:6px;border-radius:3px;background:rgba(248,249,250,.2);margin-top:20px;overflow:hidden}
+.hprog i{display:block;height:100%;background:var(--grad);border-radius:3px}
+.hbtns{display:flex;gap:16px;margin-top:24px}
+.hdots{position:absolute;left:56px;bottom:26px;display:flex;gap:10px}
+.hdots i{width:44px;height:6px;border-radius:3px;background:rgba(255,255,255,.25)}
+.hdots i.on{width:64px;background:var(--accent)}
+
+/* ряды */
+.sec{position:relative;padding-top:10px}
+.rl{font:600 28px var(--display);padding:0 96px;letter-spacing:-.3px}
+.track{display:flex;gap:30px;padding:30px 96px 100px;position:relative;transition:transform .3s var(--ease)}
+.track::after{content:'';flex:none;width:66px}
+.c{position:relative;flex:none;transition:transform .25s var(--ease)}
+.c .cw{position:absolute;inset:0;border-radius:22px;overflow:hidden;background:var(--surface)}
+.c .cw img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.c .cw::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.26),rgba(255,255,255,0) 46%);opacity:0;transition:opacity .25s}
+.c.on{transform:scale(1.1);z-index:3}
+.c.on .cw::after{opacity:1}
+.c .lab{position:absolute;left:0;right:0;top:100%;margin-top:12px;font:600 24px/1.25 var(--body);text-align:center;opacity:0;transition:opacity .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c .lab small{display:block;font:400 21px var(--body);color:var(--muted)}
+.c.on .lab{opacity:1}
+.app{width:256px;height:144px}
+.poster{width:200px;height:300px}
+.poster .cw{border-radius:16px}
+.land{width:384px;height:216px}
+.land .cw{border-radius:18px}
+.sq{width:216px;height:216px}
+.sq .cw{border-radius:18px}
+.chan{width:256px;height:144px}
+.chan .cw{background:linear-gradient(135deg,#252936,#14161d)}
+.chan .cw img{object-fit:contain;padding:18px 28px}
+.land .lt{position:absolute;left:0;right:0;bottom:0;padding:56px 20px 16px;background:linear-gradient(0deg,rgba(0,0,0,.82),transparent);font:600 23px/1.2 var(--body);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pb{position:absolute;left:14px;right:14px;bottom:14px;height:6px;border-radius:3px;background:rgba(255,255,255,.3);overflow:hidden}
+.pb i{display:block;height:100%;background:var(--grad)}
+.ph{position:absolute;inset:0;display:grid;place-items:center;padding:14px;text-align:center;font:600 22px/1.2 var(--body);color:var(--muted)}
+.allbox{position:absolute;inset:0;display:grid;place-items:center;background:var(--surface)}
+.allbox svg{width:68px;height:68px;fill:none;stroke:#fff;stroke-width:1.5}
+
+/* меню долгого нажатия */
+#menu{position:absolute;inset:0;z-index:40;background:rgba(5,6,8,.78);display:grid;place-items:center}
+.mb{min-width:640px;max-width:900px;padding:40px 48px;border-radius:28px;background:var(--surface);display:flex;flex-direction:column;gap:14px}
+.mb h3{font:700 30px var(--display);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb .btn{justify-content:flex-start;height:68px}
+
+/* все приложения и настройки */
+#all,#set{position:absolute;inset:0;z-index:30;padding:70px 0 0 96px}
+#all h2,#set h2{font:700 40px var(--display);letter-spacing:-.4px;margin-bottom:6px}
+#all .hint,#set .hint{font:400 23px var(--body);color:var(--muted);min-height:30px}
+.abox{position:absolute;left:72px;right:60px;top:190px;bottom:0;overflow:hidden}
+.ag{padding-left:24px;transition:transform .3s var(--ease)}
+.agrow{display:flex;gap:30px;height:232px;padding-top:14px}
+
+/* настройки: строки как в Luma */
+.sbox{position:absolute;left:86px;right:96px;top:190px;bottom:0;overflow:hidden}
+.sl{display:grid;gap:14px;max-width:1400px;padding:8px 8px 120px;transition:transform .25s var(--ease)}
+.srow{display:flex;align-items:center;gap:22px;height:92px;padding:0 14px 0 24px;border-radius:22px;background:var(--surface);text-align:left}
+.srow.dim .st,.srow.dim .sri{opacity:.45}
+.sri{flex:none;width:56px;height:56px;border-radius:16px;background:rgba(248,249,250,.08);display:grid;place-items:center;color:var(--muted);overflow:hidden}
+.sri svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.sri img{width:100%;height:100%;object-fit:cover;display:block}
+.st{flex:1;min-width:0}
+.st b{display:block;font:600 27px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st small{display:block;font:400 21px var(--body);color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.val{flex:none;font:600 24px var(--body);color:var(--muted);min-width:70px;text-align:right}
+.val.ok{color:#5EE29A}
+.val.nv{font-size:30px}
+.grab{flex:none;width:64px;height:64px;border-radius:18px;background:rgba(248,249,250,.08);display:grid;place-items:center;color:var(--muted)}
+.grab svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.srow.on,.srow:has(.grab.on){background:var(--surface-2);box-shadow:0 0 0 4px var(--primary)}
+.srow.on .val{color:#fff}
+.srow.on .val.ok{color:#5EE29A}
+.grab.on{background:var(--grad);color:#fff}
+.srow.gr{background:#2b2411;box-shadow:0 0 0 4px var(--accent)}
+.srow.gr .grab{background:var(--accent);color:#1a1405}
+
