@@ -37,7 +37,7 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // экран на главной не удерживаем включённым: иначе ТВ не считает его простаивающим и заставка никогда не запустится
         net = NetProxy(this)
         web = WebView(this).apply {
             setBackgroundColor(Color.BLACK)
@@ -301,6 +301,25 @@ class MainActivity : Activity() {
                 } catch (e: Exception) { st("error", ",\"msg\":" + JSONObject.quote(e.message ?: "error")) }
             }.start()
         }
+
+        /** Заставка ТВ (камин): настройки, включение в системе (нужно разрешение WRITE_SECURE_SETTINGS, его выдаёт adb) и просмотр. */
+        @JavascriptInterface fun dreamGet(): String = DreamCfg.json(this@MainActivity)
+        @JavascriptInterface fun dreamSet(json: String) { try { DreamCfg.write(this@MainActivity, JSONObject(json)) } catch (_: Exception) {} }
+        @JavascriptInterface fun dreamIsOn(): Boolean = try {
+            val comp = android.content.ComponentName(this@MainActivity, LumaDream::class.java).flattenToString()
+            (Settings.Secure.getString(contentResolver, "screensaver_components") ?: "").split(",").contains(comp)
+        } catch (_: Exception) { false }
+        @JavascriptInterface fun dreamApply(on: Boolean): String = try {
+            val comp = android.content.ComponentName(this@MainActivity, LumaDream::class.java).flattenToString()
+            val cur = Settings.Secure.getString(contentResolver, "screensaver_components")
+            if (on) {
+                if (cur != comp) DreamCfg.saveSaver(this@MainActivity, cur)   // запоминаем прежнюю заставку для возврата
+                Settings.Secure.putString(contentResolver, "screensaver_components", comp)
+                Settings.Secure.putInt(contentResolver, "screensaver_enabled", 1)
+            } else Settings.Secure.putString(contentResolver, "screensaver_components", DreamCfg.savedSaver(this@MainActivity)?.takeIf { it.isNotEmpty() })
+            "ok"
+        } catch (_: SecurityException) { "NOPERM" } catch (_: Exception) { "ERR" }
+        @JavascriptInterface fun dreamPreview() { runOnUiThread { startActivity(Intent(this@MainActivity, DreamPreviewActivity::class.java)) } }
 
         /** Есть ли рабочий интернет (сеть подключена и система проверила, что выход в интернет есть). */
         @JavascriptInterface fun online(): Boolean = try {

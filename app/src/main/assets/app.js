@@ -105,7 +105,7 @@ function heroItems() {
     if (!s.on) continue;
     const b = REG[s.id]; let n = 0;
     for (const it of b.items) {
-      if (n >= (s.id === 'cont' ? 3 : 5)) break;
+      if (n >= (s.id === 'cont' ? 3 : cfg.bannerPer || 5)) break;
       if (s.id === 'cont' && !(it.pct > 0 || it.season)) continue;
       if (seen.has(it.key)) continue;
       seen.add(it.key); n++;
@@ -196,7 +196,7 @@ function focus(r, c) {
   R = clamp(r, 0, rows.length - 1); C = clamp(c, 0, Math.max(0, rows[R].items.length - 1));
   const el = rows[R].items[C]; if (!el) return;
   el.classList.add('on'); rows[R].c = C;
-  if (mode === 'home') { scrollPage(); scrollRow(rows[R]); } else if (mode === 'set') scrollList('#set .sl', 106, 4); else if (mode === 'all') scrollList('#all .ag', 232, 2);
+  if (mode === 'home') { scrollPage(); scrollRow(rows[R]); } else if (mode === 'set') setFocused(rows[R].items[C]); else if (mode === 'all') scrollList('#all .ag', 232, 2);
 }
 function scrollPage() {
   const row = rows[R], page = $('#page'), first = $('#page .sec');
@@ -213,6 +213,7 @@ function scrollRow(row) {
 }
 function scrollList(sel, step, keep) { const el = $(sel); if (el) el.style.transform = `translate3d(0,${-Math.max(0, R - keep) * step}px,0)`; }
 function move(dr, dc) {
+  if (mode === 'set') return setMove(dr, dc);   // настройки: см. settings.js
   if (dc) {
     const c = C + dc;
     if (c < 0 || c >= rows[R].items.length) { if (mode === 'home' && rows[R].id === 'hero' && HERO.items.length > 1) slideHero(dc); return; }
@@ -235,11 +236,6 @@ function activate() {
 }
 let pressT = 0, longFired = false, swallowUp = false;
 document.addEventListener('keydown', (e) => {
-  if (grabbing) {   // строка «взята»: стрелки переносят её, OK или Назад кладут на место
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { const g = rows[R].items[1]; g && g._mv && g._mv(e.key === 'ArrowUp' ? -1 : 1); }
-    else if (['Enter', ' ', 'ArrowLeft', 'ArrowRight', 'Escape', 'Backspace'].includes(e.key)) { if (e.key === 'Enter' || e.key === ' ') swallowUp = true; stopGrab(); }
-    e.preventDefault(); return;
-  }
   const d = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
   if (d) move(d[0], d[1]);
   else if (e.key === 'Enter' || e.key === ' ') {   // OK срабатывает при отпускании, долгое нажатие открывает меню
@@ -252,7 +248,7 @@ document.addEventListener('keyup', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   clearTimeout(pressT); pressT = 0;
   if (swallowUp) { swallowUp = false; e.preventDefault(); return; }
-  if (!longFired && !grabbing) activate();
+  if (!longFired) activate();
   longFired = false; e.preventDefault();
 });
 
@@ -303,122 +299,6 @@ function renderAll(r, c) {
   focus(r, c);
 }
 
-/* ---------- настройки: строки как в Luma. OK включает или открывает, стрелка вправо ведёт к ⇅, OK на ⇅ «берёт» строку ---------- */
-let setPage = 'main', grabbing = null;
-const SVG = (p) => `<svg viewBox="0 0 24 24">${p}</svg>`;
-const ICONS = {
-  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>',
-  film: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M3 9.5h18M8 4.5v5M16 4.5v5"/>',
-  img: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4 4 3 3-2 4 3"/>',
-  tv: '<rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M8 20.5h8M12 17v3.5"/>',
-  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
-  data: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
-  gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
-  back: '<path d="M15 5l-7 7 7 7"/>',
-  list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>'
-};
-ICONS.apps = ICONS.grid;
-const GRAB = SVG('<path d="M8 4v16M8 4L4.5 7.5M8 4l3.5 3.5M16 20V4M16 20l-3.5-3.5M16 20l3.5-3.5"/>');
-function startGrab(el) { grabbing = el; el.classList.add('gr'); }
-function stopGrab() { if (grabbing) grabbing.classList.remove('gr'); grabbing = null; }
-const nav = (icon, lab, sub, f) => ({ icon, lab, sub, val: '›', vc: 'nv', f });
-const sw = (icon, lab, sub, get, set, extra) => ({ icon, lab, sub, val: get() ? 'Вкл' : 'Выкл', vc: get() ? 'ok' : '', f: () => { set(!get()); saveCfg(); buildReg(); bindSet(); extra && extra(); } });
-/** Перенос строки: меняет местами данные и строки в DOM (без перерисовки, поэтому без морганий), off: сколько строк над списком. */
-function mover(view, i, full, off, after) {
-  return (d) => {
-    const j = i + d; if (j < 0 || j >= view.length) return;
-    const a = full.findIndex((s) => s.id === view[i].id), b = full.findIndex((s) => s.id === view[j].id);
-    [full[a], full[b]] = [full[b], full[a]]; after && after(); saveCfg();
-    const sl = $('#set .sl'), x = sl.children[i + off], y = sl.children[j + off];
-    sl.insertBefore(x, d > 0 ? y.nextSibling : y);
-    rows = $$('.srow', sl).map((el, k) => ({ id: 'r' + k, items: [el, ...$$('.f', el)] }));
-    bindSet(); focus(R + d, 1);
-  };
-}
-/* страницы: main, blocks, blocks:order, blocks:g:<источник>, banner, banner:order, banner:g:<источник>, apps, weather, data */
-const memo = {};
-const parentOf = (p) => (p === 'main' ? null : /^(blocks|banner)[:]/.test(p) ? p.split(':')[0] : 'main');
-const GICON = { 'Лаунчер': 'apps', Luma: 'film', 'Google TV': 'tv' };
-const back = (to) => ({ icon: 'back', lab: 'Назад', sub: '', val: '', f: () => goSet(to, true) });
-const open = (icon, lab, sub, page) => nav(icon, lab, sub, () => { memo[setPage] = R; goSet(page); });
-const groupsOf = (list) => { const g = new Map(); for (const s of list) { const k = REG[s.id].src; if (!g.has(k)) g.set(k, []); g.get(k).push(s); } return [...g.entries()]; };
-const shortName = (b) => b.name || b.title;
-function setDef() {
-  const cnt = (b) => (b.apps ? '' : ` · ${b.items.length}`);
-  if (setPage === 'main') return { title: 'Настройки', hint: 'Главный экран можно собрать под себя', rows: [
-    open('grid', 'Блоки главного экрана', 'Какие ряды показывать и в каком порядке', 'blocks'),
-    open('img', 'Верхний баннер', 'Откуда брать фильмы для баннера', 'banner'),
-    open('apps', 'Приложения', 'Какие в ряду на главном экране и в каком порядке', 'apps'),
-    open('sun', 'Погода', wx.city ? `${wx.city}, определяется по сети` : 'В верхней панели', 'weather'),
-    open('data', 'Источники данных', 'Luma и каналы приложений Google TV', 'data'),
-    open('data', 'Обновления', updSummary(), 'upd'),
-    nav('gear', 'Системные настройки ТВ', 'Сеть, экран, звук', () => N && N.openSystemSettings()),
-    nav('back', 'Сбросить настройки', 'Вернуть стандартные ряды, баннер и приложения', () => openMenu('Сбросить настройки?', [{ t: 'Сбросить', f: resetCfg }, { t: 'Отмена' }])),
-    { ...nav('back', 'Закрыть', '', closeSet), val: '' }] };
-  const m = /^(blocks|banner)(?::(order|g:(.*)))?$/.exec(setPage);
-  if (m) {
-    const scope = m[1], full = scope === 'blocks' ? cfg.sections : cfg.banner.order, list = scope === 'blocks' ? blockList() : bannerList();
-    const word = scope === 'blocks' ? 'ряд' : 'источник';
-    if (m[2] === 'order') { const v = list.filter((s) => s.on); return { title: scope === 'blocks' ? 'Порядок рядов' : 'Порядок источников баннера', hint: 'Стрелка вправо и OK на ⇅ берут строку, стрелки вверх и вниз переносят её, OK кладёт на место', rows: [
-      ...v.map((s, i) => ({ icon: GICON[REG[s.id].src] || 'list', lab: REG[s.id].title, sub: REG[s.id].src + cnt(REG[s.id]), val: '', f: null, mv: mover(v, i, full, 0) })), back(scope)] }; }
-    if (m[3] !== undefined) { const arr = list.filter((s) => REG[s.id].src === m[3]); return { title: m[3], hint: scope === 'blocks' ? 'Какие ряды показывать на главном экране' : 'Какие источники использовать в баннере', rows: [
-      ...arr.map((s) => sw(GICON[m[3]] || 'list', shortName(REG[s.id]), cnt(REG[s.id]).replace(/^ · /, 'Карточек: ') || 'Список приложений', () => s.on, (x) => (s.on = x))), back(scope)] }; }
-    const on = list.filter((s) => s.on).length;
-    return { title: scope === 'blocks' ? 'Блоки главного экрана' : 'Верхний баннер', hint: scope === 'blocks' ? 'Порядок рядов и источники: Luma, YouTube, Зона и другие приложения' : 'Баннер собирается из включённых источников по порядку', rows: [
-      ...(scope === 'banner' ? [sw('img', 'Показывать баннер', 'Если выключен, сверху остаются приложения', () => cfg.hero, (x) => (cfg.hero = x))] : []),
-      open('list', scope === 'blocks' ? 'Порядок рядов' : 'Порядок источников', `Включено: ${on}`, scope + ':order'),
-      ...groupsOf(list).map(([name, arr]) => open(GICON[name] || 'list', name, `Включено ${arr.filter((s) => s.on).length} из ${arr.length}`, scope + ':g:' + name)), back('main')] };
-  }
-  if (setPage === 'apps') {
-    const all = appList(), pin = () => cfg.apps.pin || {};
-    return { title: 'Приложения', hint: 'Вкл: приложение в ряду на главном экране, остальные в «Все приложения»', rows: [
-      ...all.map((a, i) => ({ ...sw('app:' + a.p, a.l, a.p, () => !!pin()[a.p], (x) => { cfg.apps.order = all.map((q) => q.p); cfg.apps.pin = cfg.apps.pin || {}; if (x) cfg.apps.pin[a.p] = 1; else delete cfg.apps.pin[a.p]; }), dim: !pin()[a.p],
-        mv: (d) => { const j = i + d; if (j < 0 || j >= all.length) return; cfg.apps.order = all.map((q) => q.p); const o = cfg.apps.order; [o[i], o[j]] = [o[j], o[i]]; saveCfg();
-          const sl = $('#set .sl'), x = sl.children[i], y = sl.children[j]; sl.insertBefore(x, d > 0 ? y.nextSibling : y);
-          rows = $$('.srow', sl).map((el, k) => ({ id: 'r' + k, items: [el, ...$$('.f', el)] })); bindSet(); focus(R + d, 1); } })), back('main')] };
-  }
-  if (setPage === 'upd') return { title: 'Обновления', hint: 'Новые версии берутся из релизов на GitHub (dmitrykirsh/luma-launcher и luma-tv)', rows: [
-    ...['launcher', ...(curVer('luma') ? ['luma'] : [])].map((id) => { const u = upd[id], can = u.state === 'available' || u.state === 'needperm' || (u.state === 'error' && u.url);
-      return { icon: id === 'launcher' ? 'grid' : 'film', lab: `${UPD_NAMES[id]} ${curVer(id)}`, sub: updText(id), val: u.state === 'available' ? 'Обновить' : '›', vc: u.state === 'available' ? 'ok' : 'nv', f: () => (can ? updInstall(id) : updCheck(id)) }; }),
-    nav('data', 'Проверить обновления', 'Запросить последние релизы на GitHub', () => { updCheck('launcher'); if (curVer('luma')) updCheck('luma'); }),
-    back('main')] };
-  if (setPage === 'weather') return { title: 'Погода', hint: wx.city ? `Город: ${wx.city} (по IP-адресу)` : 'Город определяется по IP-адресу', rows: [
-    sw('sun', 'Показывать погоду', 'Рядом с часами', () => cfg.weather, (x) => (cfg.weather = x), () => { paintTop(); if (cfg.weather) loadWeather(true); }), back('main')] };
-  const when = feed.at ? new Date(feed.at).toLocaleString('ru') : 'ещё не было';
-  const perm = tv.error === 'PERMISSION';
-  return { title: 'Источники данных', hint: 'Каналы приложений читаются из Google TV, ленту Luma публикует Luma TV', rows: [
-    sw('film', 'Luma', lumaOn ? `Лента обновлена: ${when}` : 'Luma TV не установлена', () => cfg.luma, (x) => (cfg.luma = x)),
-    sw('list', 'Каналы приложений Google TV', perm ? 'Нет доступа: нужно разрешение READ_TV_LISTINGS (выдаётся через adb)' : `Каналов: ${(tv.channels || []).length}, «Продолжить» из приложений: ${(tv.next || []).length}`, () => cfg.channels, (x) => (cfg.channels = x), () => readData()), back('main')] };
-}
-function renderSet(r, c) {
-  const d = setDef(), box = $('#set');
-  const ico = (k) => (!k ? '' : k.startsWith('app:') ? `<img src="icon/${esc(k.slice(4))}.png" alt="">` : SVG(ICONS[k] || ''));
-  box.innerHTML = `<h2>${esc(d.title)}</h2><div class="hint">${esc(d.hint)}</div><div class="sbox"><div class="sl">${d.rows.map((x) => `<div class="srow f"><span class="sri">${ico(x.icon)}</span><span class="st"><b></b><small></small></span><i class="val"></i>${x.mv ? `<button class="grab f">${GRAB}</button>` : ''}</div>`).join('')}</div></div>`;
-  rows = $$('.srow', box).map((el, i) => ({ id: 'r' + i, items: [el, ...$$('.f', el)] }));
-  mode = 'set'; overlay(true); box.classList.remove('hidden');
-  bindSet();
-  focus(clamp(r ?? 0, 0, rows.length - 1), c ?? 0);
-}
-/** Подписи, состояние и обработчики строк обновляются на месте: DOM не пересоздаётся и классы фокуса не сбрасываются, поэтому нет морганий. */
-function bindSet() {
-  const d = setDef();
-  $$('#set .srow').forEach((el, i) => {
-    const x = d.rows[i]; if (!x) return;
-    setText($('b', el), x.lab); setText($('small', el), x.sub || ''); el.classList.toggle('dim', !!x.dim);
-    const v = $('.val', el); setText(v, x.val || ''); v.classList.toggle('ok', x.vc === 'ok'); v.classList.toggle('nv', x.vc === 'nv');
-    el._f = x.f; const g = $('.grab', el); if (g) { g._f = () => startGrab(el); g._mv = x.mv; }
-  });
-}
-function openSet(p) { setPage = p; renderSet(0, 0); }
-function goSet(p, restore) { setPage = p; renderSet(restore ? memo[p] || 0 : 0, 0); }
-function closeSet() { stopGrab(); $('#set').classList.add('hidden'); overlay(false); mode = 'home'; rebuild(false); focus(0, 0); }
-
-function resetCfg() {
-  const keep = cfg.dismiss; for (const k of Object.keys(cfg)) delete cfg[k]; Object.assign(cfg, freshCfg(keep));
-  if (!cfg.apps.pin) cfg.apps.pin = {};
-  saveCfg(); buildReg(); goSet('main', true);
-}
-
 /* ---------- погода: город по IP, прогноз met.no (Open-Meteo в этой сети заблокирован) ---------- */
 let wx = jget('lc.wx', {});
 const WX = (c) => (/thunder/.test(c) ? '⛈️' : /snow|sleet/.test(c) ? '❄️' : /rain|drizzle|shower/.test(c) ? '🌧️' : /fog/.test(c) ? '🌫️' : /clearsky/.test(c) ? (/night/.test(c) ? '🌙' : '☀️') : /fair|partly/.test(c) ? '⛅' : '☁️');
@@ -455,7 +335,7 @@ const curVer = (id) => { try { return N ? (id === 'launcher' ? N.version() : N.p
 let gi = 0;
 const getText = (url) => new Promise((res) => { const cb = 'gt' + ++gi; const t = setTimeout(() => { delete window[cb]; res(''); }, 25000); window[cb] = (x) => { clearTimeout(t); delete window[cb]; res(x); }; N.fetch(url, cb); });
 const updBusy = (u) => ['checking', 'downloading', 'installing'].includes(u.state);
-const updRefresh = () => { if (mode === 'set' && (setPage === 'upd' || setPage === 'main')) bindSet(); };
+const updRefresh = () => { if (mode === 'set') bindSet(); };
 async function updCheck(id) {
   const u = upd[id]; if (!N || updBusy(u) || !curVer(id)) return;
   u.state = 'checking'; updRefresh();
@@ -487,16 +367,28 @@ const updAny = () => Object.values(upd).some((u) => u.state === 'available');
 const updSummary = () => `Launcher ${curVer('launcher')}` + (curVer('luma') ? ` · Luma TV ${curVer('luma')}` : '') + (updAny() ? ' · есть обновление' : '');
 setTimeout(() => { if (!N) return; const run = () => { updCheck('launcher'); updCheck('luma'); }; run(); setInterval(run, 6 * 3600e3); }, 20000);
 
+/* ---------- заставка ТВ: камин со звуком из потока Rutube (длинные ролики без повторов) ---------- */
+const DREAM_SRC = [
+  { id: 'rutube:965c1c098297287b54c4fba406bd8288', name: 'Вечерний камин 4К', short: 'Вечерний · 10,7 ч', sub: '10,7 ч, «Уютный уголок»' },
+  { id: 'rutube:ea7a22d1d9914fd2800ff17a7238b4dc', name: 'Fireplace 4K, звуки камина', short: 'Fireplace · 2 ч', sub: '2 ч, «зверье»' }
+];
+const DREAM_SLEEP = [0, 30, 60, 120, 240, 480], DREAM_VOL = [30, 50, 70, 90];
+const sleepLabel = (m) => (m === 0 ? 'Выкл' : m < 60 ? `${m} мин` : `${m / 60} ч`);
+const nextOf = (arr, cur) => arr[(arr.indexOf(cur) + 1) % arr.length];
+let dreamMsg = '';
+const dcGet = () => { try { return JSON.parse(N.dreamGet()); } catch { return { source: DREAM_SRC[0].id, volume: 70, sleepMin: 0 }; } };
+const dcSet = (patch) => { try { N.dreamSet(JSON.stringify({ ...dcGet(), ...patch })); } catch {} };
+const dreamOn = () => { try { return !!N && N.dreamIsOn(); } catch { return false; } };
+
 /* ---------- вызовы из оболочки ---------- */
 window.lumaBack = () => {
-  if (grabbing) stopGrab();
-  else if (mode === 'menu') closeMenu();
-  else if (mode === 'set') { const up = parentOf(setPage); if (up) goSet(up, true); else closeSet(); }
+  if (mode === 'menu') closeMenu();
+  else if (mode === 'set') setBack();
   else if (mode === 'all') closeAll();
   else if (R > 1 || pageY > 0) focusStart();
   return true;
 };
-window.lumaHome = () => { stopGrab(); if (mode === 'menu') closeMenu(); if (mode === 'set') closeSet(); if (mode === 'all') closeAll(); readData(); snap = JSON.stringify([feed, apps, tv]); rebuild(false); loadWeather(); paintNet(); };
+window.lumaHome = () => { if (mode === 'menu') closeMenu(); if (mode === 'set') closeSet(); if (mode === 'all') closeAll(); readData(); snap = JSON.stringify([feed, apps, tv]); rebuild(false); loadWeather(); paintNet(); };
 window.lumaResume = () => {
   paintNet();
   if (mode !== 'home') return;
