@@ -99,8 +99,8 @@ function modelsFor(id) {
       { t: 'sw', key: 'chan', icon: 'list', lab: 'Каналы приложений Google TV', sub: () => (perm ? 'Нет доступа: нужно разрешение READ_TV_LISTINGS (выдаётся через adb)' : `Каналов: ${(tv.channels || []).length}, «Продолжить» из приложений: ${(tv.next || []).length}`), get: () => cfg.channels, set: (x) => { cfg.channels = x; }, after: () => readData() },
       { t: 'head', text: 'Обновления' }];
     for (const id2 of ['launcher', ...(curVer('luma') ? ['luma'] : [])]) {
-      const u = upd[id2], can = u.state === 'available' || u.state === 'needperm' || (u.state === 'error' && u.url);
-      out.push({ t: 'act', key: 'u' + id2, icon: id2 === 'launcher' ? 'grid' : 'film', lab: `${UPD_NAMES[id2]} ${curVer(id2)}`, sub: () => updText(id2), val: u.state === 'available' ? 'Обновить' : '›', vc: u.state === 'available' ? 'ok' : '', f: () => (can ? updInstall(id2) : updCheck(id2)) });
+      const u = upd[id2], avail = () => u.state === 'available';
+      out.push({ t: 'act', key: 'u' + id2, icon: id2 === 'launcher' ? 'grid' : 'film', lab: `${UPD_NAMES[id2]} ${curVer(id2)}`, sub: () => updText(id2), val: () => (avail() ? 'Обновить' : '›'), vc: () => (avail() ? 'ok' : ''), f: () => (u.state === 'available' || u.state === 'needperm' || (u.state === 'error' && u.url) ? updInstall(id2) : updCheck(id2)) });
     }
     out.push({ t: 'act', key: 'uall', icon: 'refresh', lab: 'Проверить обновления', sub: 'Запросить последние релизы на GitHub', f: () => { updCheck('launcher'); if (curVer('luma')) updCheck('luma'); } });
     return out;
@@ -122,7 +122,8 @@ function inner(m) {
   if (m.t === 'step') { const v = m.get(); return head + `<span class="stp"><em>‹</em><span class="bar"><i style="width:${((v - m.min) / (m.max - m.min)) * 100}%"></i></span><b>${m.fmt ? m.fmt(v) : v}</b><em>›</em></span>`; }
   if (m.t === 'grp') return head + `<span class="val big">${m.open ? '⌄' : '›'}</span>`;
   if (m.t === 'add') return head + '<span class="val ok">Добавить</span>';
-  return head + `<span class="val ${m.vc || ''}">${esc(m.val ?? (m.t === 'act' ? '›' : ''))}</span>`;
+  const vc = typeof m.vc === 'function' ? m.vc() : m.vc || '', val = typeof m.val === 'function' ? m.val() : m.val;
+  return head + `<span class="val ${vc}">${esc(val ?? (m.t === 'act' ? '›' : ''))}</span>`;
 }
 function mapHtml() {
   const rowsOn = blockList().filter((s) => s.on), hero = cfg.hero ? heroItems().length : 0;
