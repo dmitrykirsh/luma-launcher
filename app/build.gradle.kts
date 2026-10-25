@@ -10,8 +10,8 @@ android {
         applicationId = "ws.luma.launcher"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "0.4.2"
+        versionCode = 7
+        versionName = "0.4.3"
     }
     buildTypes {
         release { isMinifyEnabled = false; signingConfig = signingConfigs.getByName("debug") }

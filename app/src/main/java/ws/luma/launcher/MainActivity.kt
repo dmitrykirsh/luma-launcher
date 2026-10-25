@@ -167,19 +167,28 @@ class MainActivity : Activity() {
             val ver = pm.getPackageInfo(pkg, 0).longVersionCode
             val f = File(iconDir, "$pkg-$ver.png")
             if (!f.exists()) {
-                val intent = pm.getLeanbackLaunchIntentForPackage(pkg) ?: pm.getLaunchIntentForPackage(pkg)
-                val banner: Drawable? = try { intent?.let { pm.getActivityBanner(it) } } catch (_: Exception) { null } ?: pm.getApplicationInfo(pkg, 0).loadBanner(pm)
                 val bmp = Bitmap.createBitmap(320, 180, Bitmap.Config.ARGB_8888)
                 val c = Canvas(bmp)
-                if (banner != null) { banner.setBounds(0, 0, 320, 180); banner.draw(c) }
-                else {
+                // Баннер -> иконка на плашке -> просто плашка: у части системных приложений (например, на ТВ Philips) баннер или иконка не отрисовываются
+                var done = false
+                try {
+                    val intent = pm.getLeanbackLaunchIntentForPackage(pkg) ?: pm.getLaunchIntentForPackage(pkg)
+                    val banner: Drawable? = try { intent?.let { pm.getActivityBanner(it) } } catch (_: Exception) { null } ?: pm.getApplicationInfo(pkg, 0).loadBanner(pm)
+                    if (banner != null) { banner.setBounds(0, 0, 320, 180); banner.draw(c); done = true }
+                } catch (_: Throwable) {}
+                if (!done) {
                     c.drawColor(Color.parseColor("#26282E"))
-                    val ic = pm.getApplicationIcon(pkg); ic.setBounds(104, 34, 216, 146); ic.draw(c)
+                    try { val ic = pm.getApplicationIcon(pkg); ic.setBounds(104, 34, 216, 146); ic.draw(c); done = true } catch (_: Throwable) {}
+                }
+                if (!done) {
+                    val label = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (_: Throwable) { pkg }
+                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0AA"); textSize = 90f; textAlign = android.graphics.Paint.Align.CENTER }
+                    c.drawText(label.take(1).uppercase(), 160f, 115f, paint)
                 }
                 f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
             WebResourceResponse("image/png", null, 200, "OK", mapOf("Cache-Control" to "max-age=86400"), f.inputStream())
-        } catch (_: Exception) { null }
+        } catch (_: Throwable) { null }
     }
 
     inner class Bridge {

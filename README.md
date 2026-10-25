@@ -28,7 +28,7 @@
 Вручную, без установщика:
 ```bash
 adb connect <IP-ТВ>:5555
-adb install -r -g Luma-Launcher-0.4.2.apk
+adb install -r -g Luma-Launcher-0.4.3.apk
 adb shell pm grant ws.luma.launcher android.permission.READ_TV_LISTINGS
 adb shell pm grant ws.luma.launcher android.permission.WRITE_SECURE_SETTINGS   # для включения заставки из настроек
 bash tools/set-default.sh     # назначить домашним и включить службу кнопки «Домой»

@@ -152,7 +152,7 @@ const ph = (t) => `<div class="ph">${esc(t)}</div>`;
 function card(cls, item, inner, lab) { const i = ACTS.push(item) - 1; return `<div class="c f ${cls}" data-i="${i}"><div class="cw">${inner}</div>${lab ? `<div class="lab">${lab}</div>` : ''}</div>`; }
 const cimg = (src, alt) => ph(alt) + (src ? `<img src="${esc(src)}" alt="" decoding="async" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()">` : '');
 const ALL_ICON = '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>';
-const appCard = (a) => card('app', { go: () => N && N.launch(a.p), menu: () => appMenu(a) }, `<img src="icon/${esc(a.p)}.png" alt="" decoding="async">`, esc(a.l));
+const appCard = (a) => card('app', { go: () => N && N.launch(a.p), menu: () => appMenu(a) }, cimg(`icon/${a.p}.png`, [...a.l][0] || '?'), esc(a.l));
 const pinned = () => appList().filter((a) => cfg.apps.pin && cfg.apps.pin[a.p]);
 function appList() {
   const idx = new Map(cfg.apps.order.map((p, i) => [p, i]));

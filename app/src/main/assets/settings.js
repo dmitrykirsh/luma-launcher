@@ -24,7 +24,7 @@ const IC = {
   plus: '<path d="M12 5v14M5 12h14"/>', film2: '<rect x="3" y="4.5" width="18" height="15" rx="3"/>'
 };
 IC.apps = IC.grid;
-const ic = (k) => (!k ? '' : k.startsWith('app:') ? `<img src="icon/${esc(k.slice(4))}.png" alt="">` : SVG(IC[k] || ''));
+const ic = (k) => (!k ? '' : k.startsWith('app:') ? `<img src="icon/${esc(k.slice(4))}.png" alt="" onerror="this.style.visibility='hidden'">` : SVG(IC[k] || ''));
 const GICON = { 'Лаунчер': 'apps', Luma: 'film', 'Google TV': 'tv' };
 
 let setPage = 'home', zone = 'side', sideRows = [], bodyRows = [], models = [], expand = {}, bodyT = 0;
@@ -132,7 +132,7 @@ function rowHtml(m, i) {
   if (m.t === 'head') return `<h3 class="sh">${esc(m.text)}</h3>`;
   if (m.t === 'note') return `<p class="sno">${esc(m.text)}</p>`;
   if (m.t === 'map') return `<div class="smap" id="smap">${mapHtml()}<p>Так выглядит главный экран. Порядок и состав меняются ниже.</p></div>`;
-  if (m.t === 'tiles') return `<div class="tiles" data-m="${i}">${m.apps.map((a, k) => `<div class="tile f" data-k="${k}"><img src="icon/${esc(a.p)}.png" alt=""><span>${esc(a.l)}</span></div>`).join('')}</div>`;
+  if (m.t === 'tiles') return `<div class="tiles" data-m="${i}">${m.apps.map((a, k) => `<div class="tile f" data-k="${k}"><img src="icon/${esc(a.p)}.png" alt="" onerror="this.style.visibility='hidden'"><span>${esc(a.l)}</span></div>`).join('')}</div>`;
   if (m.t === 'ord') return `<div class="sr2 ord f" data-m="${i}"><span class="si2">${ic(m.icon)}</span><span class="st2"><b>${esc(m.lab)}</b><small>${esc(m.sub)}</small></span>${m.up ? `<button class="mbt f" data-b="up">${ic('up')}</button>` : ''}${m.down ? `<button class="mbt f" data-b="down">${ic('down')}</button>` : ''}</div>`;
   return `<div class="sr2 f r-${m.t}" data-m="${i}">${inner(m)}</div>`;
 }
