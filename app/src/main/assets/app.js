@@ -359,7 +359,7 @@ function updText(id) {
   if (u.state === 'available') return `Доступна версия ${u.version}. OK: скачать и установить`;
   if (u.state === 'downloading') return `Скачиваем версию ${u.version}… ${u.pct || 0}%`;
   if (u.state === 'installing') return 'Открываем установщик, подтвердите установку на экране';
-  if (u.state === 'needperm') return 'Нужно разрешение: включите установку из этого источника и нажмите OK ещё раз';
+  if (u.state === 'needperm') return 'Нужно разрешение: включите установку из этого источника и нажмите OK ещё раз. Если страницы нет, запустите установщик ещё раз (он выдаёт это разрешение)';
   if (u.state === 'error') return 'Не получилось' + (u.err ? ': ' + u.err : '') + '. OK: повторить';
   if (u.state === 'none') return `Последняя версия · проверено в ${new Date(u.at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}`;
   return cur ? 'OK: проверить обновления' : '';

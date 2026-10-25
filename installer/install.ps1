@@ -215,6 +215,7 @@ function Install-Launcher {
     Install-Apk $apk $label
     Sh "pm grant $PkgLauncher android.permission.READ_TV_LISTINGS" | Out-Null
     Sh "pm grant $PkgLauncher android.permission.WRITE_SECURE_SETTINGS" | Out-Null   # чтобы лаунчер мог сам включать заставку ТВ
+    Sh "appops set $PkgLauncher REQUEST_INSTALL_PACKAGES allow" | Out-Null   # чтобы обновления из настроек лаунчера (свои и Luma TV) могли устанавливаться
     Say 'Разрешения на чтение каналов приложений и на включение заставки выданы.' 'DarkGray'
 }
 
