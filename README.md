@@ -18,15 +18,20 @@
 - Кнопку «Домой» на Google TV перехватывает служба доступности `HomeKeyService`.
 
 ## Установка
-1. Скачайте APK из [релизов](https://github.com/dmitrykirsh/luma-launcher/releases/latest) и установите его с разрешением на каналы:
-   ```bash
-   adb connect <IP-ТВ>:5555
-   adb install -r -g Luma-Launcher-0.2.0.apk
-   adb shell pm grant ws.luma.launcher android.permission.READ_TV_LISTINGS
-   ```
-2. Сделайте лаунчер домашним экраном (в репозитории `tools/set-default.sh`): назначает его домашним и включает службу кнопки «Домой», не трогая остальные службы доступности.
-   Откат: `adb shell cmd package set-home-activity com.google.android.apps.tv.launcherx/.home.HomeActivity`.
-3. Дальше обновления ставятся прямо из настроек.
+Современные прошивки ТВ не дают назначить сторонний лаунчер домашним экраном, если он не из Google Play, поэтому установка идёт с компьютера по adb. Для этого есть установщик с консольным диалогом (Windows): он подключается к ТВ по IP, проверяет Luma TV (и предлагает поставить её из релизов), ставит лаунчер, выдаёт разрешения и назначает его домашним экраном. Есть и откат: вернуть Google-лаунчер или удалить лаунчер.
+
+1. Скачайте `Luma-Launcher-Installer.zip` из [релизов](https://github.com/dmitrykirsh/luma-launcher/releases/latest), распакуйте и запустите `Install-Luma-Launcher.bat`.
+2. Как включить отладку на ТВ и где взять IP и порт: [installer/README.md](installer/README.md).
+3. Дальше обновления ставятся прямо из настроек лаунчера (Настройки → Обновления).
+
+Вручную, без установщика:
+```bash
+adb connect <IP-ТВ>:5555
+adb install -r -g Luma-Launcher-0.2.0.apk
+adb shell pm grant ws.luma.launcher android.permission.READ_TV_LISTINGS
+bash tools/set-default.sh     # назначить домашним и включить службу кнопки «Домой»
+```
+Откат: `adb shell cmd package set-home-activity com.google.android.apps.tv.launcherx/.home.HomeActivity`.
 
 ## Сборка
 ```bash

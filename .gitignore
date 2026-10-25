@@ -6,3 +6,6 @@ local.properties
 keystore.properties
 *.jks
 dist/
+
+# adb, который установщик скачивает рядом с собой
+installer/platform-tools/
