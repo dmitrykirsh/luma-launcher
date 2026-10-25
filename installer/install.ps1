@@ -218,6 +218,15 @@ function Install-Launcher {
     Say 'Разрешения на чтение каналов приложений и на включение заставки выданы.' 'DarkGray'
 }
 
+# Кто сейчас домашний экран. Команда `cmd role get-role-holders` есть только с Android 11, на старых прошивках спрашиваем через пакетный менеджер.
+function Get-HomePkg {
+    $r = Sh 'cmd role get-role-holders android.app.role.HOME'
+    if ($r -and $r -notmatch 'Unknown command|Error|Exception|not found|No such') { return (($r -split "`n")[0]).Trim() }
+    $q = Sh 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME'
+    $m = [regex]::Match($q, '([A-Za-z0-9_.]+)/[A-Za-z0-9_.$]+')
+    if ($m.Success) { return $m.Groups[1].Value }
+    return ''
+}
 function Set-Default {
     Head 'Домашний экран по умолчанию'
     Say 'Лаунчер станет домашним экраном, а кнопка «Домой» на пульте будет открывать его.' 'White'
@@ -230,9 +239,10 @@ function Set-Default {
         Sh "settings put secure enabled_accessibility_services '$new'" | Out-Null
     }
     Sh 'settings put secure accessibility_enabled 1' | Out-Null
-    $role = Sh 'cmd role get-role-holders android.app.role.HOME'
-    if ($role -match [regex]::Escape($PkgLauncher)) { Say 'Готово: Luma Launcher назначен домашним экраном.' 'Green' }
-    else { Say "Не удалось подтвердить назначение (сейчас домашний: $role). Попробуйте нажать «Домой» на пульте или назначить лаунчер вручную в настройках ТВ." 'Yellow' }
+    $homePkg = Get-HomePkg
+    if ($homePkg -eq $PkgLauncher) { Say 'Готово: Luma Launcher назначен домашним экраном.' 'Green' }
+    elseif (-not $homePkg) { Say 'Команда выполнена, но проверить назначение на этой версии Android нельзя. Нажмите «Домой» на пульте: должен открыться Luma Launcher.' 'Yellow' }
+    else { Say "Система пока считает домашним экраном $homePkg. Нажмите «Домой» на пульте; если откроется не лаунчер, выберите Luma Launcher в настройках ТВ (Приложения → Домашний экран)." 'Yellow' }
     Sh "am start -n $PkgLauncher/.MainActivity" | Out-Null
 }
 
@@ -244,9 +254,9 @@ function Restore-Stock {
     if (-not $stock) { $stock = $cands | Select-Object -First 1 }
     if (-not $stock) { Say 'Стандартный домашний экран не найден: выберите его вручную в настройках ТВ (Приложения → Домашний экран).' 'Yellow'; return $false }
     Sh "cmd package set-home-activity $stock" | Out-Null
-    $role = Sh 'cmd role get-role-holders android.app.role.HOME'
+    $homePkg = Get-HomePkg
     $pkg = ($stock -split '/')[0]
-    if ($role -match [regex]::Escape($pkg)) { Say "Домашний экран возвращён: $pkg" 'Green' } else { Say "Назначили $stock, но система сообщает домашним: $role. Если кнопка «Домой» открывает не то, выберите домашний экран в настройках ТВ." 'Yellow' }
+    if ($homePkg -eq $pkg) { Say "Домашний экран возвращён: $pkg" 'Green' } elseif (-not $homePkg) { Say "Назначили $stock. Проверить на этой версии Android нельзя: нажмите «Домой» на пульте." 'Yellow' } else { Say "Назначили $stock, но система сообщает домашним: $homePkg. Если кнопка «Домой» открывает не то, выберите домашний экран в настройках ТВ." 'Yellow' }
     return $true
 }
 function Disable-HomeService {

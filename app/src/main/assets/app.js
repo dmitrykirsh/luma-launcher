@@ -246,6 +246,7 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keyup', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
+  if (!pressT) { e.preventDefault(); return; }   // отпускание OK без нажатия здесь: кнопку нажали в другом приложении (например «Да, выйти» в Luma), иначе лаунчер сам откроет выбранное
   clearTimeout(pressT); pressT = 0;
   if (swallowUp) { swallowUp = false; e.preventDefault(); return; }
   if (!longFired) activate();
