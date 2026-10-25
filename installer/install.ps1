@@ -42,17 +42,17 @@ function YesNo([string]$q, [bool]$def = $true) {
 function Die([string]$t) { Say ''; Say $t 'Red'; if (-not $Auto) { Read-Host 'Нажмите Enter, чтобы закрыть' | Out-Null }; exit 1 }
 
 # ---------- adb ----------
-function Adb([string[]]$a) {
+function AdbRun([string[]]$a) {
     $out = & $script:Adb @a 2>&1 | ForEach-Object { "$_" }
     return ($out -join "`n").Trim()
 }
-function Sh([string]$cmd) { return Adb @('-s', $script:Serial, 'shell', $cmd) }
+function Sh([string]$cmd) { return AdbRun @('-s', $script:Serial, 'shell', $cmd) }
 
 function Find-Adb {
     if ($AdbPath -and (Test-Path $AdbPath)) { return $AdbPath }
-    $c = Get-Command adb -ErrorAction SilentlyContinue
-    if ($c) { return $c.Source }
-    foreach ($p in @("$Root\platform-tools\adb.exe", "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe", "$env:ANDROID_HOME\platform-tools\adb.exe", "$env:ANDROID_SDK_ROOT\platform-tools\adb.exe", 'C:\Android\sdk\platform-tools\adb.exe')) {
+    $c = Get-Command adb.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($c -and $c.Source -and (Test-Path $c.Source)) { return $c.Source }
+    foreach ($p in @("$Root\platform-tools\adb.exe", "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe", "$env:ANDROID_HOME\platform-tools\adb.exe", "$env:ANDROID_SDK_ROOT\platform-tools\adb.exe")) {
         if ($p -and (Test-Path $p)) { return $p }
     }
     return ''
@@ -82,7 +82,7 @@ function Show-EnableHelp {
     Say '  3. IP-адрес ТВ: Настройки → Сеть и Интернет → ваша сеть → «IP-адрес».'
     Say '  ТВ и компьютер должны быть в одной сети. Подробная инструкция: README.md рядом со скриптом.' 'DarkGray'
 }
-function Get-State { return (Adb @('-s', $script:Serial, 'get-state')) }
+function Get-State { return (AdbRun @('-s', $script:Serial, 'get-state')) }
 
 function Connect-Tv {
     Head 'Подключение к ТВ'
@@ -92,7 +92,7 @@ function Connect-Tv {
     $p = Ask 'Порт отладки' "$Port"
     $script:Serial = "${Ip}:$p"
     Say "Подключаемся к $script:Serial …"
-    $out = Adb @('connect', $script:Serial)
+    $out = AdbRun @('connect', $script:Serial)
     Say $out 'DarkGray'
     $ok = ($out -match 'connected to') -and (-not ($out -match 'failed|cannot|refused|unable'))
     if (-not $ok) {
@@ -102,12 +102,12 @@ function Connect-Tv {
             Say 'На ТВ: Для разработчиков → Беспроводная отладка → «Подключить устройство с помощью кода».'
             $pp = Ask 'Порт сопряжения (показан на экране ТВ рядом с кодом)' ''
             $code = Ask 'Код сопряжения (6 цифр)' ''
-            $pr = Adb @('pair', "${Ip}:$pp", $code)
+            $pr = AdbRun @('pair', "${Ip}:$pp", $code)
             Say $pr 'DarkGray'
             if ($pr -notmatch 'Successfully paired') { Die 'Сопряжение не удалось. Проверьте порт и код и запустите скрипт ещё раз.' }
             $p2 = Ask 'Порт для подключения (на экране «Беспроводная отладка», он отличается от порта сопряжения)' "$p"
             $script:Serial = "${Ip}:$p2"
-            $out = Adb @('connect', $script:Serial)
+            $out = AdbRun @('connect', $script:Serial)
             Say $out 'DarkGray'
         } else { Die 'Проверьте IP и порт, что отладка включена, и запустите скрипт ещё раз.' }
     }
@@ -158,9 +158,10 @@ function Get-Apk($rel) {
 }
 function Install-Apk([string]$file, [string]$name) {
     Say "Устанавливаем $name на ТВ …"
-    $out = Adb @('-s', $script:Serial, 'install', '-r', '-g', $file)
+    $out = AdbRun @('-s', $script:Serial, 'install', '-r', '-g', $file)
     Say $out 'DarkGray'
     if ($out -notmatch 'Success') {
+        if ($out -match 'VERSION_DOWNGRADE') { Die "На ТВ уже стоит более новая версия, чем $name. Выберите в списке последнюю версию или удалите приложение на ТВ (Настройки → Приложения) и запустите скрипт снова." }
         if ($out -match 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match') { Die "На ТВ уже стоит $name с другой подписью. Удалите его на ТВ (Настройки → Приложения) и запустите скрипт ещё раз." }
         Say 'На Android 14 ТВ может показать окно защиты («Play Protect»): выберите «Всё равно установить» и запустите скрипт снова.' 'Yellow'
         Die "Не удалось установить $name."
@@ -213,7 +214,8 @@ function Install-Launcher {
     }
     Install-Apk $apk $label
     Sh "pm grant $PkgLauncher android.permission.READ_TV_LISTINGS" | Out-Null
-    Say 'Разрешение на чтение каналов приложений выдано.' 'DarkGray'
+    Sh "pm grant $PkgLauncher android.permission.WRITE_SECURE_SETTINGS" | Out-Null   # чтобы лаунчер мог сам включать заставку ТВ
+    Say 'Разрешения на чтение каналов приложений и на включение заставки выданы.' 'DarkGray'
 }
 
 function Set-Default {
@@ -262,7 +264,7 @@ function Rollback([bool]$remove) {
     Restore-Stock | Out-Null
     Disable-HomeService
     if ($remove) {
-        $o = Adb @('-s', $script:Serial, 'uninstall', $PkgLauncher)
+        $o = AdbRun @('-s', $script:Serial, 'uninstall', $PkgLauncher)
         if ($o -match 'Success') { Say 'Luma Launcher удалён с ТВ. Luma TV осталась на месте.' 'Green' } else { Say "Не удалось удалить: $o" 'Yellow' }
     } else { Say 'Luma Launcher остаётся на ТВ, его можно снова назначить домашним, запустив этот скрипт (пункт 1).' 'DarkGray' }
 }
