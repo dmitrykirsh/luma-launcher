@@ -357,15 +357,26 @@ let gi = 0;
 const getText = (url) => new Promise((res) => { const cb = 'gt' + ++gi; const t = setTimeout(() => { delete window[cb]; res(''); }, 25000); window[cb] = (x) => { clearTimeout(t); delete window[cb]; res(x); }; N.fetch(url, cb); });
 const updBusy = (u) => ['checking', 'downloading', 'installing'].includes(u.state);
 const updRefresh = () => { if (mode === 'set') bindSet(); };
+/** Последний релиз: сначала API GitHub, а если он недоступен или упёрся в лимит, страницы github.com (они часто открываются там, где API нет). */
+async function latestRelease(repo) {
+  for (let i = 0; i < 2; i++) {
+    const t = await getText(`https://api.github.com/repos/${repo}/releases/latest`);
+    try { const j = JSON.parse(t), apk = (j.assets || []).find((a) => /\.apk$/i.test(a.name)); if (j.tag_name) return { tag: j.tag_name, url: apk ? apk.browser_download_url : '' }; } catch {}
+    if (i === 0) await new Promise((r) => setTimeout(r, 2500));
+  }
+  const page = await getText(`https://github.com/${repo}/releases/latest`), tag = (page.match(/expanded_assets\/([^"'?]+)/) || [])[1];
+  if (!tag) return null;
+  const list = await getText(`https://github.com/${repo}/releases/expanded_assets/${tag}`), href = (list.match(/href="([^"]+\.apk)"/i) || [])[1];
+  return { tag, url: href ? 'https://github.com' + href : '' };
+}
 async function updCheck(id) {
   const u = upd[id]; if (!N || updBusy(u) || !curVer(id)) return;
   u.state = 'checking'; updRefresh();
-  const t = await getText(`https://api.github.com/repos/${UPD_REPOS[id]}/releases/latest`);
-  try {
-    const j = JSON.parse(t), apk = (j.assets || []).find((a) => /\.apk$/i.test(a.name)); u.at = Date.now();
-    if (apk && semNewer(j.tag_name, curVer(id))) { u.state = 'available'; u.version = String(j.tag_name).replace(/^v/i, ''); u.url = apk.browser_download_url; }
-    else u.state = 'none';
-  } catch { u.state = 'error'; u.err = t ? '' : 'нет связи с GitHub'; u.url = ''; }
+  const r = await latestRelease(UPD_REPOS[id]);
+  u.at = Date.now();
+  if (!r) { u.state = 'error'; u.err = 'нет связи с GitHub (из этой сети он может быть недоступен)'; u.url = ''; }
+  else if (r.url && semNewer(r.tag, curVer(id))) { u.state = 'available'; u.version = String(r.tag).replace(/^v/i, ''); u.url = r.url; }
+  else u.state = 'none';
   updRefresh();
 }
 function updInstall(id) {
@@ -386,7 +397,7 @@ function updText(id) {
 }
 const updAny = () => Object.values(upd).some((u) => u.state === 'available');
 const updSummary = () => `Launcher ${curVer('launcher')}` + (curVer('luma') ? ` · Luma TV ${curVer('luma')}` : '') + (updAny() ? ' · есть обновление' : '');
-setTimeout(() => { if (!N) return; const run = () => { updCheck('launcher'); updCheck('luma'); }; run(); setInterval(run, 6 * 3600e3); }, 20000);
+setTimeout(() => { if (!N) return; const run = () => { updCheck('launcher'); setTimeout(() => updCheck('luma'), 4000); }; run(); setInterval(run, 6 * 3600e3); }, 20000);
 
 /* ---------- заставка ТВ: камин со звуком из потока Rutube (длинные ролики без повторов) ---------- */
 const DREAM_SRC = [

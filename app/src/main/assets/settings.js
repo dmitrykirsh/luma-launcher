@@ -102,7 +102,7 @@ function modelsFor(id) {
       const u = upd[id2], avail = () => u.state === 'available';
       out.push({ t: 'act', key: 'u' + id2, icon: id2 === 'launcher' ? 'grid' : 'film', lab: `${UPD_NAMES[id2]} ${curVer(id2)}`, sub: () => updText(id2), val: () => (avail() ? 'Обновить' : '›'), vc: () => (avail() ? 'ok' : ''), f: () => (u.state === 'available' || u.state === 'needperm' || (u.state === 'error' && u.url) ? updInstall(id2) : updCheck(id2)) });
     }
-    out.push({ t: 'act', key: 'uall', icon: 'refresh', lab: 'Проверить обновления', sub: 'Запросить последние релизы на GitHub', f: () => { updCheck('launcher'); if (curVer('luma')) updCheck('luma'); } });
+    out.push({ t: 'act', key: 'uall', icon: 'refresh', lab: 'Проверить обновления', sub: 'Запросить последние релизы на GitHub', f: () => { updCheck('launcher'); if (curVer('luma')) setTimeout(() => updCheck('luma'), 4000); } });
     return out;
   }
   return [
