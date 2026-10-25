@@ -108,6 +108,7 @@ function modelsFor(id) {
   return [
     { t: 'info', key: 'v1', icon: 'grid', lab: 'Luma Launcher', sub: 'github.com/dmitrykirsh/luma-launcher', val: curVer('launcher') },
     { t: 'info', key: 'v2', icon: 'film', lab: 'Luma TV', sub: 'github.com/dmitrykirsh/luma-tv', val: curVer('luma') || 'не установлена' },
+    { t: 'seg', key: 'perf', icon: 'timer', lab: 'Лёгкий режим', sub: () => 'Для слабых ТВ: фон не движется, переходы короче' + (cfg.perf === 'on' || cfg.perf === 'off' ? '' : (liteOn() ? ' · сейчас включён' : ' · сейчас выключен')), opts: [{ v: 'auto', l: 'Авто' }, { v: 'on', l: 'Вкл' }, { v: 'off', l: 'Выкл' }], get: () => cfg.perf || 'auto', set: (v) => { setPerf(v); } },
     { t: 'act', key: 'sys', icon: 'gear', lab: 'Системные настройки ТВ', sub: 'Сеть, экран, звук', f: () => N && N.openSystemSettings() },
     { t: 'act', key: 'reset', icon: 'reset', lab: 'Сбросить настройки', sub: 'Вернуть стандартные ряды, баннер и приложения', f: () => openMenu('Сбросить настройки?', [{ t: 'Сбросить', f: resetCfg }, { t: 'Отмена' }]) }];
 }
@@ -210,7 +211,7 @@ function scrollBody(el) {
 function setFocused(el) {
   if (!el) return;
   if (zone === 'side') { if (el._sec && el._sec !== setPage) { setPage = el._sec; clearTimeout(bodyT); bodyT = setTimeout(() => renderBody(false), 80); } markSide(); }
-  else scrollBody(el);
+  else { $('.sr2.hl')?.classList.remove('hl'); el.closest('.sr2')?.classList.add('hl'); scrollBody(el); }
 }
 function toSide() { zone = 'side'; rows = sideRows; focus(Math.max(0, SECTIONS.findIndex((s) => s[0] === setPage)), 0); }
 function toBody() { if (!bodyRows.length) return; zone = 'body'; rows = bodyRows; focus(0, 0); }

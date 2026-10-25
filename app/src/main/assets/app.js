@@ -187,7 +187,27 @@ function buildHome() {
   for (const h of HERO.items) if (h.bd) new Image().src = h.bd;   // заранее: на диск, чтобы смена баннера и следующий запуск были мгновенными
 }
 /** Поверх главной открываются настройки и «Все приложения»: сама главная на это время не рисуется (экономит память плиток WebView). */
-function overlay(on) { $('#page').style.visibility = on ? 'hidden' : ''; $('#top').style.visibility = on ? 'hidden' : ''; }
+function overlay(on) { $('#page').style.visibility = on ? 'hidden' : ''; $('#top').style.visibility = on ? 'hidden' : ''; document.body.classList.toggle('ov', on); }
+
+/* ---------- лёгкий режим: на слабых ТВ отключает движущийся фон и укорачивает переходы ---------- */
+const liteOn = () => cfg.perf === 'on' || (cfg.perf !== 'off' && lsGet('lc.lite') === '1');
+const applyLite = () => document.body.classList.toggle('lite', liteOn());
+function setPerf(v) { cfg.perf = v; if (v === 'auto') { try { localStorage.removeItem('lc.lite'); } catch {} setTimeout(() => probeFps(0), 4000); } saveCfg(); applyLite(); }
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+/** Замер плавности: если в покое кадры тянутся дольше ~33 мс (меньше 30 к/с), включаем лёгкий режим; для надёжности нужно два плохих замера подряд. */
+function probeFps(n) {
+  if (cfg.perf === 'on' || cfg.perf === 'off' || lsGet('lc.lite') === '1') return;
+  if (mode !== 'home') { setTimeout(() => probeFps(n), 15000); return; }
+  const ts = []; const t0 = performance.now();
+  const step = (t) => { ts.push(t); if (t - t0 < 2500) requestAnimationFrame(step); else done(); };
+  const done = () => {
+    const d = ts.slice(3).map((t, i) => t - ts[i + 2]).filter((x) => x > 0).sort((a, b) => a - b), med = d[d.length >> 1] || 16;
+    if (med > 33) { if (n >= 1) { try { localStorage.setItem('lc.lite', '1'); } catch {} applyLite(); } else setTimeout(() => probeFps(n + 1), 20000); }
+  };
+  requestAnimationFrame(step);
+}
+setTimeout(() => { applyLite(); }, 0);
+setTimeout(() => probeFps(0), 12000);
 
 /* ---------- фокус и навигация пультом ---------- */
 let mode = 'home', rows = [], R = 0, C = 0;
