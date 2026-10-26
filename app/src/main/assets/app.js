@@ -27,7 +27,7 @@ cfg.sections = (cfg.sections || []).map((s) => (s.id === 'trend' ? { id: 'l:tm0'
 cfg.banner = cfg.banner || { order: [] };
 cfg.apps = cfg.apps || { order: [], pin: null };
 cfg.dismiss = cfg.dismiss || {};
-const saveCfg = () => jset('lc.cfg', cfg);
+const saveCfg = () => { cfg.savedAt = Date.now(); jset('lc.cfg', cfg); };
 
 /* ---------- данные ---------- */
 const LUMA_SECTIONS = [['tm0', 'В тренде на этой неделе'], ['tm1', 'Сериалы в тренде'], ['tm2', 'Сейчас в кино'], ['tm3', 'Лучшие фильмы всех времён'], ['tm4', 'Скоро выйдут'],
@@ -295,6 +295,14 @@ function closeMenu() {
   if (!saved) return;
   mode = saved.mode; rows = saved.rows; focus(saved.R, saved.C); saved = null;
 }
+/** Код входа Google (device flow): большой текст + кнопка отмены, тот же каркас, что у openMenu. */
+function openCodeBox(title, body, cancelLabel, onCancel) {
+  if (!saved) saved = { mode, rows, R, C };
+  const box = $('#menu'); box.classList.remove('hidden');
+  box.innerHTML = `<div class="mb"><h3>${esc(title)}</h3>${body}<button class="btn f primary">${esc(cancelLabel)}</button></div>`;
+  const items = $$('.f', box); items.forEach((b) => { b._f = () => { closeMenu(); try { onCancel && onCancel(); } catch {} }; });
+  rows = items.map((b, i) => ({ id: 'm' + i, items: [b] })); mode = 'menu'; focus(0, 0);
+}
 function itemMenu(it) {
   openMenu(it.name, [{ t: 'Убрать из списка', f: () => { cfg.dismiss[it.key] = Date.now(); saveCfg(); buildReg(); if (mode === 'home') rebuild(true); } }, { t: 'Отмена' }]);
 }
@@ -398,19 +406,6 @@ function updText(id) {
 const updAny = () => Object.values(upd).some((u) => u.state === 'available');
 const updSummary = () => `Launcher ${curVer('launcher')}` + (curVer('luma') ? ` · Luma TV ${curVer('luma')}` : '') + (updAny() ? ' · есть обновление' : '');
 setTimeout(() => { if (!N) return; const run = () => { updCheck('launcher'); setTimeout(() => updCheck('luma'), 4000); }; run(); setInterval(run, 6 * 3600e3); }, 20000);
-
-/* ---------- заставка ТВ: камин со звуком из потока Rutube (длинные ролики без повторов) ---------- */
-const DREAM_SRC = [
-  { id: 'rutube:965c1c098297287b54c4fba406bd8288', name: 'Вечерний камин 4К', short: 'Вечерний · 10,7 ч', sub: '10,7 ч, «Уютный уголок»' },
-  { id: 'rutube:ea7a22d1d9914fd2800ff17a7238b4dc', name: 'Fireplace 4K, звуки камина', short: 'Fireplace · 2 ч', sub: '2 ч, «зверье»' }
-];
-const DREAM_SLEEP = [0, 30, 60, 120, 240, 480], DREAM_VOL = [30, 50, 70, 90];
-const sleepLabel = (m) => (m === 0 ? 'Выкл' : m < 60 ? `${m} мин` : `${m / 60} ч`);
-const nextOf = (arr, cur) => arr[(arr.indexOf(cur) + 1) % arr.length];
-let dreamMsg = '';
-const dcGet = () => { try { return JSON.parse(N.dreamGet()); } catch { return { source: DREAM_SRC[0].id, volume: 70, sleepMin: 0 }; } };
-const dcSet = (patch) => { try { N.dreamSet(JSON.stringify({ ...dcGet(), ...patch })); } catch {} };
-const dreamOn = () => { try { return !!N && N.dreamIsOn(); } catch { return false; } };
 
 /* ---------- вызовы из оболочки ---------- */
 window.lumaBack = () => {

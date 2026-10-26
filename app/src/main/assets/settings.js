@@ -28,7 +28,7 @@ const ic = (k) => (!k ? '' : k.startsWith('app:') ? `<img src="icon/${esc(k.slic
 const GICON = { 'Лаунчер': 'apps', Luma: 'film', 'Google TV': 'tv' };
 
 let setPage = 'home', zone = 'side', sideRows = [], bodyRows = [], models = [], expand = {}, bodyT = 0;
-const SECTIONS = [['home', 'grid', 'Главный экран'], ['banner', 'img', 'Верхний баннер'], ['apps', 'apps', 'Приложения'], ['dream', 'fire', 'Заставка ТВ'], ['net', 'cloud', 'Погода и сеть'], ['data', 'data', 'Данные и обновления'], ['about', 'info', 'О лаунчере']];
+const SECTIONS = [['home', 'grid', 'Главный экран'], ['banner', 'img', 'Верхний баннер'], ['apps', 'apps', 'Приложения'], ['net', 'cloud', 'Погода и сеть'], ['data', 'data', 'Данные и обновления'], ['about', 'info', 'О лаунчере']];
 const cntOf = (b) => (b.apps ? '' : ` · ${b.items.length}`);
 
 /* краткая сводка под названием раздела */
@@ -36,7 +36,6 @@ function sideSub(id) {
   if (id === 'home') return `${blockList().filter((s) => s.on).length} рядов`;
   if (id === 'banner') return cfg.hero ? `${heroItems().length} слайдов` : 'Выключен';
   if (id === 'apps') return `${pinned().length} в ряду из ${apps.length}`;
-  if (id === 'dream') return dreamOn() ? `Включена · ${sleepLabel(dcGet().sleepMin)}` : 'Выключена';
   if (id === 'net') return (cfg.weather && wx.city ? wx.city : 'Погода') + (netOn ? '' : ' · нет сети');
   if (id === 'data') return updAny() ? 'Есть обновление' : (lumaFeed() ? 'Luma подключена' : 'Luma не найдена');
   return `Версия ${curVer('launcher')}`;
@@ -79,21 +78,21 @@ function modelsFor(id) {
     if (rest.length) { out.push({ t: 'head', text: `Остальные · ${rest.length}` }); out.push({ t: 'note', text: 'OK добавляет в ряд. Все они остаются в «Все приложения».' }); for (let i = 0; i < rest.length; i += 5) out.push({ t: 'tiles', pinned: false, apps: rest.slice(i, i + 5), key: `r${i}` }); }
     return out;
   }
-  if (id === 'dream') {
-    const c = dcGet();
-    return [
-      { t: 'sw', key: 'dream', icon: 'fire', lab: 'Заставка ТВ: камин', sub: () => dreamMsg || 'Лаунчер сам станет заставкой, когда ТВ простаивает', get: dreamOn, set: (x) => { const r = N.dreamApply(x); dreamMsg = r === 'NOPERM' ? 'Нужно разрешение (один раз): adb shell pm grant ws.luma.launcher android.permission.WRITE_SECURE_SETTINGS' : r === 'ok' ? '' : 'Не получилось включить'; } },
-      { t: 'seg', key: 'src', icon: 'film', lab: 'Видео', sub: 'Живой камин со звуком из потока Rutube, 1080p', opts: DREAM_SRC.map((x) => ({ v: x.id, l: x.short })), get: () => (DREAM_SRC.find((x) => x.id === c.source) || DREAM_SRC[0]).id, set: (x) => dcSet({ source: x }) },
-      { t: 'step', key: 'vol', icon: 'speaker', lab: 'Громкость', sub: 'Звук плавно нарастает при запуске', min: 10, max: 100, step: 10, fmt: (v) => v + '%', get: () => dcGet().volume, set: (x) => dcSet({ volume: x }) },
-      { t: 'seg', key: 'sleep', icon: 'timer', lab: 'Таймер сна', sub: 'Через сколько заставка плавно выключится', opts: DREAM_SLEEP.map((m) => ({ v: m, l: sleepLabel(m) })), get: () => dcGet().sleepMin, set: (x) => dcSet({ sleepMin: x }) },
-      { t: 'act', key: 'prev', icon: 'play', lab: 'Посмотреть сейчас', sub: 'Откроется на весь экран, любая кнопка закрывает', f: () => N && N.dreamPreview() }];
-  }
   if (id === 'net') return [
     { t: 'sw', key: 'wx', icon: 'sun', lab: 'Погода рядом с часами', sub: () => (wx.city ? `${wx.city}${wx.t !== undefined ? ', ' + Math.round(wx.t) + '°' : ''} · город определяется по сети` : 'Город определяется по сети'), get: () => cfg.weather, set: (x) => { cfg.weather = x; paintTop(); if (x) loadWeather(true); } },
     { t: 'act', key: 'wxr', icon: 'refresh', lab: 'Обновить погоду', sub: 'Запросить прогноз сейчас', f: () => loadWeather(true) },
     { t: 'info', key: 'net', icon: 'cloud', lab: 'Интернет', sub: 'Значок «нет сети» появляется рядом с часами', val: netOn ? 'Есть' : 'Нет', vc: netOn ? 'ok' : 'bad' }];
   if (id === 'data') {
     const perm = tv.error === 'PERMISSION', out = [
+      { t: 'head', text: 'Google-аккаунт · основной способ синхронизации' },
+      ...(driveState().connected ? [
+        { t: 'who', key: 'drwho', lab: driveState().name || 'Google-аккаунт', sub: driveState().email || '', photo: driveState().photo || '', val: 'Подключено', vc: 'ok' },
+        { t: 'act', key: 'drsync', icon: 'refresh', lab: 'Синхронизировать сейчас', sub: () => DR.msg || 'Раскладка и приложения хранятся в вашем Google Диске и синхронизируются сами', f: () => driveSyncNow() },
+        { t: 'act', key: 'droff', icon: 'reset', lab: 'Отключить Google-аккаунт', sub: 'Синхронизация раскладки остановится', f: () => openMenu('Отключить Google-аккаунт?', [{ t: 'Отключить', f: () => { try { N.driveDisconnect(); } catch {} DR.msg = ''; structural(); } }, { t: 'Отмена' }]) },
+        { t: 'act', key: 'drwipe', icon: 'reset', lab: 'Удалить данные с Диска', sub: 'Файл раскладки будет удалён из вашего Google Диска, вход отключится', f: () => openMenu('Удалить файл с Google Диска и отключить?', [{ t: 'Удалить и отключить', f: () => { DR.msg = 'Удаляем файл с Диска…'; structural(); try { N.driveDeleteRemote(); } catch {} } }, { t: 'Отмена' }]) }
+      ] : [
+        { t: 'act', key: 'drconn', icon: 'cloud', lab: 'Войти через Google', sub: 'Раскладка и закреплённые приложения будут синхронизироваться через ваш Google Диск — код сканируется с телефона, не из этой сети', f: () => driveConnect() }
+      ]),
       { t: 'head', text: 'Источники данных' },
       { t: 'sw', key: 'luma', icon: 'film', lab: 'Luma', sub: () => (lumaOn ? (feed.at ? `Лента обновлена: ${new Date(feed.at).toLocaleString('ru')}` : 'Лента ещё не получена') : 'Luma TV не установлена'), get: () => cfg.luma, set: (x) => { cfg.luma = x; } },
       { t: 'sw', key: 'chan', icon: 'list', lab: 'Каналы приложений Google TV', sub: () => (perm ? 'Нет доступа: нужно разрешение READ_TV_LISTINGS (выдаётся через adb)' : `Каналов: ${(tv.channels || []).length}, «Продолжить» из приложений: ${(tv.next || []).length}`), get: () => cfg.channels, set: (x) => { cfg.channels = x; }, after: () => readData() },
@@ -116,6 +115,10 @@ function modelsFor(id) {
 /* ---------- отрисовка ---------- */
 const subOf = (m) => (typeof m.sub === 'function' ? m.sub() : m.sub || '');
 function inner(m) {
+  if (m.t === 'who') {
+    const av = `<span class="si2 avt"><i>${esc((m.lab || 'G').trim().charAt(0).toUpperCase())}</i>${m.photo ? `<img src="${esc(m.photo)}" alt="" onerror="this.remove()">` : ''}</span>`;
+    return av + `<span class="st2"><b>${esc(m.lab)}</b><small>${esc(subOf(m))}</small></span><span class="val ${m.vc || ''}">${esc(m.val || '')}</span>`;
+  }
   const head = `<span class="si2">${ic(m.icon)}</span><span class="st2"><b>${esc(m.lab)}</b><small>${esc(subOf(m))}</small></span>`;
   if (m.t === 'sw') return head + `<span class="swt ${m.get() ? 'on' : ''}"><i></i></span>`;
   if (m.t === 'seg') return head + `<span class="seg">${m.opts.map((o) => `<u class="${o.v === m.get() ? 'sel' : ''}">${esc(o.l)}</u>`).join('')}</span>`;
@@ -240,3 +243,66 @@ function resetCfg() {
   if (!cfg.apps.pin) cfg.apps.pin = {};
   saveCfg(); buildReg(); if (mode === 'set') structural();
 }
+
+/* ---------- синхронизация раскладки через Google Drive (только облако, без локальной сети) ----------
+   Раскладка — не история, поэтому без слияния по полям: побеждает более новая по времени cfg.savedAt. */
+const DR = { connecting: false, busy: false, msg: '' };
+function driveState() { try { return JSON.parse(N.driveState()); } catch { return { connected: false, last: 0 }; } }
+function driveConnect() {
+  DR.connecting = true;
+  openCodeBox('Google-аккаунт', '<p>Запрашиваем код…</p>', 'Отменить', () => { try { N.driveConnectCancel(); } catch {} DR.connecting = false; structural(); });
+  try { N.driveConnect(); } catch {}
+}
+function driveQrSvg(code) { try { const u = 'https://www.google.com/device?user_code=' + encodeURIComponent(code || ''); const q = qrcode(0, 'M'); q.addData(u); q.make(); return q.createSvgTag({ cellSize: 5, margin: 2, scalable: true }); } catch { return ''; } }
+window.lumaDriveCode = (json) => {
+  let d = {}; try { d = JSON.parse(json); } catch {}
+  openCodeBox('Google-аккаунт', `<p>Наведите камеру телефона — откроется страница входа с уже вставленным кодом:</p><div class="dr-qr">${driveQrSvg(d.code)}</div><p class="sub">Или вручную на google.com/device, код: <b>${esc(d.code || '')}</b></p>`, 'Отменить', () => { try { N.driveConnectCancel(); } catch {} DR.connecting = false; structural(); });
+};
+window.lumaDriveConnected = (json) => {
+  DR.connecting = false; let r = {}; try { r = JSON.parse(json); } catch {}
+  closeMenu();
+  if (r.error) { DR.msg = { NO_CREDS: 'Не настроены ключи Google в этой сборке.', DEVICE: 'Не получилось начать вход, попробуйте ещё раз.', NETWORK: 'Нет связи с Google.' }[r.error] || 'Вход не удался.'; structural(); return; }
+  driveSyncNow();
+};
+function driveSyncNow() {
+  if (DR.busy) return; DR.busy = true; DR.msg = 'Синхронизируем…'; structural();
+  try { N.driveFetchRemote(); } catch { DR.busy = false; }
+}
+window.lumaDriveRemote = (json) => {
+  let r = {}; try { r = JSON.parse(json); } catch {}
+  if (r.error) { driveFinish(r.error); return; }
+  if (r.data) {
+    try {
+      const remote = JSON.parse(r.data);
+      if (remote && remote.cfg && (remote.savedAt || 0) > (cfg.savedAt || 0)) {
+        for (const k of Object.keys(cfg)) delete cfg[k];
+        Object.assign(cfg, remote.cfg); cfg.savedAt = remote.savedAt;
+        saveCfg(); buildReg(); if (mode === 'set') structural(); else rebuild(true);
+      }
+    } catch {}
+  }
+  try { N.driveUpload(JSON.stringify({ app: 'LumaLauncherConfig', format: 1, savedAt: cfg.savedAt || Date.now(), cfg })); } catch { driveFinish('NETWORK'); }
+};
+window.lumaDriveUploaded = (json) => { let r = {}; try { r = JSON.parse(json); } catch {} driveFinish(r.error); };
+function driveFinish(err) {
+  DR.busy = false;
+  DR.msg = err ? ({ NO_AUTH: 'Сессия истекла, войдите заново.', NETWORK: 'Нет связи с Google.' }[err] || 'Не получилось синхронизировать.') : 'Готово · ' + new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  structural();
+}
+let driveLastAuto = 0;
+function driveAutoSync() {
+  if (DR.connecting || DR.busy) return;
+  if (!driveState().connected) return;
+  if (Date.now() - driveLastAuto < 25000) return;
+  driveLastAuto = Date.now();
+  driveSyncNow();
+}
+setTimeout(() => driveAutoSync(), 7000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') driveAutoSync(); });
+setInterval(() => { if (document.visibilityState === 'visible') driveAutoSync(); }, 5 * 60 * 1000);
+
+window.lumaDriveDeleted = (json) => {
+  let r = {}; try { r = JSON.parse(json); } catch {}
+  DR.msg = r.error ? 'Не получилось удалить файл с Диска. Проверьте сеть.' : '';
+  structural();
+};

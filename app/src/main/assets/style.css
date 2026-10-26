@@ -103,7 +103,11 @@ button{font:inherit;color:inherit;border:0;background:none;outline:none}
 #menu{position:absolute;inset:0;z-index:40;background:rgba(5,6,8,.78);display:grid;place-items:center}
 .mb{min-width:640px;max-width:900px;padding:40px 48px;border-radius:28px;background:var(--surface);display:flex;flex-direction:column;gap:14px}
 .mb h3{font:700 30px var(--display);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb p{font-size:22px;line-height:1.5;color:#d6d9e0}
+.mb p.sub{font-size:19px;color:var(--muted)}
 .mb .btn{justify-content:flex-start;height:68px}
+.dr-qr{background:#fff;border-radius:18px;padding:16px;display:inline-block;align-self:center}
+.dr-qr svg{display:block;width:200px;height:200px}
 
 /* все приложения и настройки */
 #all,#set{position:absolute;inset:0;z-index:30;padding:70px 0 0 96px}
@@ -215,3 +219,5 @@ body.lite .bdin{transition-duration:.12s}
 body.lite .c{transition-duration:.12s}
 body.lite .c .cw::after{display:none}
 body.lite .hbq{box-shadow:none}
+.si2.avt{width:76px;height:76px;border-radius:50%;background:var(--primary);color:#fff;font:700 32px var(--display);position:relative}.si2.avt i{font-style:normal}.si2.avt img{position:absolute;inset:0}
+.sr2.r-who{height:104px}

@@ -31,6 +31,7 @@ import java.io.File
 class MainActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var net: NetProxy
+    private lateinit var driveSync: DriveSync
     private val iconDir by lazy { File(cacheDir, "icons").apply { mkdirs() } }
     private val loader by lazy { WebViewAssetLoader.Builder().addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(this)).build() }
 
@@ -39,6 +40,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         // экран на главной не удерживаем включённым: иначе ТВ не считает его простаивающим и заставка никогда не запустится
         net = NetProxy(this)
+        driveSync = DriveSync(this) { code -> js(code) }
         web = WebView(this).apply {
             setBackgroundColor(Color.BLACK)
             isFocusable = true; isFocusableInTouchMode = true
@@ -311,25 +313,6 @@ class MainActivity : Activity() {
             }.start()
         }
 
-        /** Заставка ТВ (камин): настройки, включение в системе (нужно разрешение WRITE_SECURE_SETTINGS, его выдаёт adb) и просмотр. */
-        @JavascriptInterface fun dreamGet(): String = DreamCfg.json(this@MainActivity)
-        @JavascriptInterface fun dreamSet(json: String) { try { DreamCfg.write(this@MainActivity, JSONObject(json)) } catch (_: Exception) {} }
-        @JavascriptInterface fun dreamIsOn(): Boolean = try {
-            val comp = android.content.ComponentName(this@MainActivity, LumaDream::class.java).flattenToString()
-            (Settings.Secure.getString(contentResolver, "screensaver_components") ?: "").split(",").contains(comp)
-        } catch (_: Exception) { false }
-        @JavascriptInterface fun dreamApply(on: Boolean): String = try {
-            val comp = android.content.ComponentName(this@MainActivity, LumaDream::class.java).flattenToString()
-            val cur = Settings.Secure.getString(contentResolver, "screensaver_components")
-            if (on) {
-                if (cur != comp) DreamCfg.saveSaver(this@MainActivity, cur)   // запоминаем прежнюю заставку для возврата
-                Settings.Secure.putString(contentResolver, "screensaver_components", comp)
-                Settings.Secure.putInt(contentResolver, "screensaver_enabled", 1)
-            } else Settings.Secure.putString(contentResolver, "screensaver_components", DreamCfg.savedSaver(this@MainActivity)?.takeIf { it.isNotEmpty() })
-            "ok"
-        } catch (_: SecurityException) { "NOPERM" } catch (_: Exception) { "ERR" }
-        @JavascriptInterface fun dreamPreview() { runOnUiThread { startActivity(Intent(this@MainActivity, DreamPreviewActivity::class.java)) } }
-
         /** Есть ли рабочий интернет (сеть подключена и система проверила, что выход в интернет есть). */
         @JavascriptInterface fun online(): Boolean = try {
             val cm = getSystemService(android.net.ConnectivityManager::class.java)
@@ -348,5 +331,16 @@ class MainActivity : Activity() {
 
         /** Страница отрисовала первый кадр: показываем WebView (самый первый кадр WebView иногда рисуется в неверном масштабе). */
         @JavascriptInterface fun ready() { runOnUiThread { web.postDelayed({ web.visibility = View.VISIBLE }, 120) } }
+
+        @JavascriptInterface fun driveState(): String = driveSync.state()
+        @JavascriptInterface fun driveConnect() { driveSync.connectAsync() }
+        @JavascriptInterface fun driveConnectBrowser() { driveSync.connectBrowserAsync() }
+        @JavascriptInterface fun driveDeleteRemote() { driveSync.deleteRemoteAsync() }
+        @JavascriptInterface fun driveSecret(): String = driveSync.secret()
+        @JavascriptInterface fun driveAdopt(v: String): Boolean = driveSync.adopt(v)
+        @JavascriptInterface fun driveConnectCancel() { driveSync.cancelConnect() }
+        @JavascriptInterface fun driveDisconnect() { driveSync.disconnect() }
+        @JavascriptInterface fun driveFetchRemote() { driveSync.fetchRemoteAsync() }
+        @JavascriptInterface fun driveUpload(json: String) { driveSync.uploadAsync(json) }
     }
 }
