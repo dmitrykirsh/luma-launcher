@@ -267,6 +267,12 @@ function scrollRow(row) {
   tr.style.transform = `translate3d(${-row.sx}px,0,0)`;
 }
 function scrollList(sel, step, keep) { const el = $(sel); if (el) el.style.transform = `translate3d(0,${-Math.max(0, R - keep) * step}px,0)`; }
+/** Номер плитки в строке, центр которой ближе всего по горизонтали к центру элемента el. */
+function nearestCol(row, el) {
+  const b = el.getBoundingClientRect(), cx = b.left + b.width / 2; let best = 0, bd = 1e9;
+  row.items.forEach((it, i) => { const q = it.getBoundingClientRect(), d = Math.abs(q.left + q.width / 2 - cx); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
 function move(dr, dc) {
   if (mode === 'set') return setMove(dr, dc);   // настройки: см. settings.js
   if (dc) {
@@ -276,7 +282,10 @@ function move(dr, dc) {
   } else {
     let r = R + dr; while (r >= 0 && r < rows.length && !rows[r].items.length) r += dr;
     if (r < 0 || r >= rows.length) return;
-    focus(r, mode === 'home' ? rows[r].c || 0 : C);
+    let c = mode === 'home' ? rows[r].c || 0 : C;
+    // простой вид: между панелью избранных и сеткой приложений идём строго вверх/вниз, к плитке, центр которой ближе всего по горизонтали (а не к «запомненной» в той строке)
+    if (mode === 'home' && isSimple() && /^(dock|g\d+)$/.test(rows[r].id) && /^(dock|g\d+)$/.test(rows[R].id) && rows[R].items[C]) c = nearestCol(rows[r], rows[R].items[C]);
+    focus(r, c);
   }
 }
 function currentItem() { const el = rows[R] && rows[R].items[C]; return el && el.dataset.i !== undefined ? ACTS[+el.dataset.i] : null; }

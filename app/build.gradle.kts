@@ -16,8 +16,8 @@ android {
         applicationId = "ws.luma.launcher"
         minSdk = 24
         targetSdk = 34
-        versionCode = 15
-        versionName = "0.6.2"
+        versionCode = 16
+        versionName = "0.6.3"
         buildConfigField("String", "DRIVE_CLIENT_ID", "\"${syncProps.getProperty("driveClientId", "")}\"")
         buildConfigField("String", "DRIVE_CLIENT_SECRET", "\"${syncProps.getProperty("driveClientSecret", "")}\"")
         buildConfigField("String", "DRIVE_DESK_ID", "\"${syncProps.getProperty("driveDesktopClientId", "")}\"")
