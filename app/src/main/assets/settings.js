@@ -33,8 +33,8 @@ const cntOf = (b) => (b.apps ? '' : ` · ${b.items.length}`);
 
 /* краткая сводка под названием раздела */
 function sideSub(id) {
-  if (id === 'home') return `${blockList().filter((s) => s.on).length} рядов`;
-  if (id === 'banner') return cfg.hero ? `${heroItems().length} слайдов` : 'Выключен';
+  if (id === 'home') return isSimple() ? 'Простой вид' : `${blockList().filter((s) => s.on).length} рядов`;
+  if (id === 'banner') return isSimple() ? 'Тренд недели' : cfg.hero ? `${heroItems().length} слайдов` : 'Выключен';
   if (id === 'apps') return `${pinned().length} в ряду из ${apps.length}`;
   if (id === 'net') return (cfg.weather && wx.city ? wx.city : 'Погода') + (netOn ? '' : ' · нет сети');
   if (id === 'data') return updAny() ? 'Есть обновление' : (lumaFeed() ? 'Luma подключена' : 'Luma не найдена');
@@ -64,7 +64,18 @@ function orderModels(scope) {
   }
   return out;
 }
+/** Вид главного экрана и блокировка настроек, которые в простом виде не работают. */
+const viewModel = () => ({ t: 'seg', key: 'view', icon: 'grid', lab: 'Вид главного экрана', sub: () => (isSimple() ? 'Баннер недели, избранные приложения и все приложения: легко и плавно' : 'Свои ряды, источники и рекомендации'), opts: [{ v: 'simple', l: 'Простой' }, { v: 'full', l: 'Расширенный' }], get: () => (isSimple() ? 'simple' : 'full'), set: (v) => { cfg.view = v; setTimeout(structural, 0); } });
+const lockAll = (arr) => arr.map((x) => (x.t === 'head' || x.t === 'note' ? x : { ...x, locked: true }));
 function modelsFor(id) {
+  const m = modelsForRaw(id);
+  if (id === 'home') return [viewModel(), ...(isSimple() ? [{ t: 'note', text: 'В простом виде порядок экрана задан: баннер «В тренде на этой неделе» из Luma, избранные приложения и все остальные. Ряды и источники доступны в расширенном виде.' }, ...lockAll(m.filter((x) => x.t !== 'map'))] : m)];
+  if (!isSimple()) return m;
+  if (id === 'banner') return [{ t: 'note', text: 'В простом виде баннер всегда показывает фильмы «В тренде на этой неделе» из Luma. Свои источники баннера доступны в расширенном виде.' }, ...lockAll(m)];
+  if (id === 'data') return m.map((x) => (x.key === 'chan' ? { ...x, locked: true } : x));
+  return m;
+}
+function modelsForRaw(id) {
   if (id === 'home') return [{ t: 'map' }, ...orderModels('home')];
   if (id === 'banner') return [
     { t: 'sw', key: 'hero', icon: 'img', lab: 'Показывать баннер', sub: 'Если выключен, сверху остаются приложения', get: () => cfg.hero, set: (x) => { cfg.hero = x; } },
@@ -104,7 +115,12 @@ function modelsFor(id) {
     out.push({ t: 'act', key: 'uall', icon: 'refresh', lab: 'Проверить обновления', sub: 'Запросить последние релизы на GitHub', f: () => { updCheck('launcher'); if (curVer('luma')) setTimeout(() => updCheck('luma'), 4000); } });
     return out;
   }
+  const dh = (() => { try { return !!N.isDefaultHome(); } catch { return false; } })(), hk = (() => { try { return !!N.homeKeyOn(); } catch { return false; } })();
   return [
+    { t: 'head', text: 'Главный экран ТВ' },
+    { t: 'act', key: 'dhome', icon: 'tv', lab: 'Главный экран по умолчанию', sub: dh ? 'Luma Launcher открывается при включении ТВ и по кнопке «Домой»' : 'Сейчас главный экран другой. Нажмите OK и выберите «Luma Launcher» в списке', val: dh ? 'Включено' : 'Выбрать', vc: dh ? 'ok' : '', f: () => N && N.openHomeSettings() },
+    { t: 'act', key: 'hkey', icon: 'gear', lab: 'Кнопка «Домой» на пульте', sub: hk ? 'Служба включена: кнопка всегда открывает лаунчер' : 'На некоторых ТВ кнопка уходит в Google TV. Нажмите OK, откройте «Luma Launcher» в списке и включите службу', val: hk ? 'Включено' : 'Включить', vc: hk ? 'ok' : '', f: () => N && N.openAccessibility() },
+    { t: 'head', text: 'О лаунчере' },
     { t: 'info', key: 'v1', icon: 'grid', lab: 'Luma Launcher', sub: 'github.com/dmitrykirsh/luma-launcher', val: curVer('launcher') },
     { t: 'info', key: 'v2', icon: 'film', lab: 'Luma TV', sub: 'github.com/dmitrykirsh/luma-tv', val: curVer('luma') || 'не установлена' },
     { t: 'seg', key: 'perf', icon: 'timer', lab: 'Лёгкий режим', sub: () => 'Для слабых ТВ: фон не движется, переходы короче' + (cfg.perf === 'on' || cfg.perf === 'off' ? '' : (liteOn() ? ' · сейчас включён' : ' · сейчас выключен')), opts: [{ v: 'auto', l: 'Авто' }, { v: 'on', l: 'Вкл' }, { v: 'off', l: 'Выкл' }], get: () => cfg.perf || 'auto', set: (v) => { setPerf(v); } },
@@ -136,9 +152,11 @@ function mapHtml() {
 function rowHtml(m, i) {
   if (m.t === 'head') return `<h3 class="sh">${esc(m.text)}</h3>`;
   if (m.t === 'note') return `<p class="sno">${esc(m.text)}</p>`;
+  if (m.locked) return `<div class="sr2 lock r-${m.t}" data-m="${i}">${m.t === 'ord' ? `<span class="si2">${ic(m.icon)}</span><span class="st2"><b>${esc(m.lab)}</b><small>${esc(m.sub)}</small></span>` : inner(m)}</div>`;
   if (m.t === 'map') return `<div class="smap" id="smap">${mapHtml()}<p>Так выглядит главный экран. Порядок и состав меняются ниже.</p></div>`;
   if (m.t === 'tiles') return `<div class="tiles" data-m="${i}">${m.apps.map((a, k) => `<div class="tile f" data-k="${k}"><img src="icon/${esc(a.p)}.png" alt="" onerror="this.style.visibility='hidden'"><span>${esc(a.l)}</span></div>`).join('')}</div>`;
   if (m.t === 'ord') return `<div class="sr2 ord f" data-m="${i}"><span class="si2">${ic(m.icon)}</span><span class="st2"><b>${esc(m.lab)}</b><small>${esc(m.sub)}</small></span>${m.up ? `<button class="mbt f" data-b="up">${ic('up')}</button>` : ''}${m.down ? `<button class="mbt f" data-b="down">${ic('down')}</button>` : ''}</div>`;
+  if (m.locked) return `<div class="sr2 lock r-${m.t}" data-m="${i}">${m.t === 'ord' ? `<span class="si2">${ic(m.icon)}</span><span class="st2"><b>${esc(m.lab)}</b><small>${esc(m.sub)}</small></span>` : inner(m)}</div>`;
   return `<div class="sr2 f r-${m.t}" data-m="${i}">${inner(m)}</div>`;
 }
 function renderBody(keep) {
@@ -148,6 +166,7 @@ function renderBody(keep) {
   bodyRows = [];
   $$('#bdin [data-m]').forEach((el) => {
     const m = models[+el.dataset.m]; el._m = m; let items = [el];
+    if (m.locked) return;   // заблокировано в простом виде: ни фокуса, ни действий
     if (m.t === 'ord') {
       el._f = () => { m.off(); structural(); };
       $$('.mbt', el).forEach((b) => { b._f = () => { (b.dataset.b === 'up' ? m.up : m.down)(); structural(); }; items.push(b); });

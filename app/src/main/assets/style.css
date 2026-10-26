@@ -221,3 +221,18 @@ body.lite .c .cw::after{display:none}
 body.lite .hbq{box-shadow:none}
 .si2.avt{width:76px;height:76px;border-radius:50%;background:var(--primary);color:#fff;font:700 32px var(--display);position:relative}.si2.avt i{font-style:normal}.si2.avt img{position:absolute;inset:0}
 .sr2.r-who{height:104px}
+
+/* ===== простой вид главного экрана (как на Apple TV): баннер, избранные, все приложения; только transform/opacity, без размытия и теней ===== */
+body.simple #aurora{display:none}
+body.simple #hero{margin:0;height:600px;border-radius:0;background:var(--bg)}
+body.simple #hero.off{height:170px;background:none}
+body.simple .hshade{background:linear-gradient(90deg,rgba(11,12,16,.9) 0,rgba(11,12,16,.45) 46%,rgba(11,12,16,0) 76%),linear-gradient(transparent 52%,var(--bg) 100%)}
+body.simple .hin{left:96px;bottom:84px}
+body.simple .sdock{margin-top:-46px;position:relative;z-index:2}
+body.simple .sdock .track{padding:24px 96px 64px}
+body.simple .sgt{padding:6px 96px 0;font:600 26px var(--display);color:var(--muted)}
+body.simple .sgrid{display:flex;gap:36px;padding:26px 96px 58px;content-visibility:auto;contain-intrinsic-size:auto 250px}
+body.simple .hdots{bottom:36px}
+body.simple .c .cw::after{background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,0) 50%)}
+.sr2.lock{opacity:.38}
+body.simple .hdots{left:96px}

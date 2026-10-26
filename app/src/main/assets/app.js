@@ -16,7 +16,7 @@ const DEFAULTS = {"sections": ["apps", "cont", "favs", "l:tm0", "wn", "c:com.goo
 const DEF_SECTIONS = DEFAULTS.on, DEF_BANNER = DEFAULTS.bannerOn;
 const PIN_DEFAULT = DEFAULTS.pin;
 function freshCfg(dismiss) {
-  return { hero: true, luma: true, channels: true, weather: true,
+  return { view: 'simple', hero: true, luma: true, channels: true, weather: true,
     sections: DEFAULTS.sections.map((id) => ({ id, on: DEFAULTS.on.includes(id) })),
     banner: { order: DEFAULTS.banner.map((id) => ({ id, on: DEFAULTS.bannerOn.includes(id) })) },
     apps: { order: [...DEFAULTS.appsOrder], pin: Object.fromEntries(DEFAULTS.pin.map((p) => [p, 1])) }, dismiss: dismiss || {} };
@@ -171,7 +171,35 @@ function sectionHtml(s) {
   return `<section class="sec" data-id="${esc(s.id)}"><h2 class="rl">${esc(b.title)}</h2><div class="track">${items}</div></section>`;
 }
 const PLAY = '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const isSimple = () => cfg.view === 'simple';
+const GEAR = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>';
+const HERO_HTML = `<section id="hero" class="HASOFF"><div class="hbgs"></div><div class="hshade"></div><div class="hin">
+    <div class="htag"></div><h1 class="htitle"></h1><div class="hmeta"></div><p class="hdesc"></p><div class="hprog"><i></i></div>
+    <div class="hbtns"><button class="btn primary f" data-a="hero:play">${'<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>'}<span>Смотреть</span></button><button class="btn f" data-a="hero:more"><span>Подробнее</span></button></div></div><div class="hdots"></div></section>`;
+/** Простой вид (как на Apple TV): сверху баннер «В тренде на этой неделе» из Luma, ниже избранные приложения, ещё ниже все остальные. Без рядов и рекомендаций, только лёгкие плитки. */
+function buildHomeSimple() {
+  ACTS = [];
+  document.body.classList.add('simple');
+  const tm = REG['l:tm0'];
+  HERO.items = tm && cfg.hero !== false && lumaFeed() ? tm.items.slice(0, 6).map((it) => ({ ...it, tag: 'В тренде на этой неделе', star: true })) : [];
+  if (HERO.i >= HERO.items.length) HERO.i = 0;
+  const has = HERO.items.length > 0;
+  const all = appList(), pin = pinned(), dock = pin.length ? pin : all.slice(0, 6), inDock = new Set(dock.map((a) => a.p));
+  const tiles = all.filter((a) => !inDock.has(a.p)).map((a) => appCard(a));
+  tiles.push(card('app allc', { go: () => openSet('home') }, `<div class="allbox">${GEAR}</div>`, 'Настройки'));
+  let h = HERO_HTML.replace('HASOFF', has ? '' : 'off') + `<section class="sec sdock" data-id="dock"><div class="track">${dock.map((a) => appCard(a)).join('')}</div></section><h2 class="rl sgt">Все приложения</h2>`;
+  for (let i = 0; i < tiles.length; i += 6) h += `<div class="sgrid" data-id="g${i / 6}">${tiles.slice(i, i + 6).join('')}</div>`;
+  $('#page').innerHTML = h;
+  rows = [{ id: 'top', items: $$('#top .f') }];
+  if (has) rows.push({ id: 'hero', items: $$('#hero .f') });
+  rows.push({ id: 'dock', el: $('.sdock'), items: $$('.sdock .f'), sx: 0, c: 0 });
+  for (const g of $$('#page .sgrid')) rows.push({ id: g.dataset.id, el: g, items: $$('.f', g), c: 0 });
+  if (has) { paintHero(); kickHero(); } else clearInterval(HERO.timer);
+  for (const it of HERO.items) if (it.bd) new Image().src = it.bd;
+}
 function buildHome() {
+  if (isSimple()) return buildHomeSimple();
+  document.body.classList.remove('simple');
   ACTS = [];
   HERO.items = heroItems(); if (HERO.i >= HERO.items.length) HERO.i = 0;
   const has = HERO.items.length > 0;
@@ -221,6 +249,11 @@ function focus(r, c) {
 function scrollPage() {
   const row = rows[R], page = $('#page'), first = $('#page .sec');
   let y = 0;
+  if (isSimple()) {   // баннер и избранные всегда на экране, прокручиваются только строки «Все приложения»
+    if (/^g\d/.test(row.id || '')) y = clamp(row.el.offsetTop - 150, 0, Math.max(0, page.offsetHeight - 1080));
+    pageY = y; page.style.transform = `translate3d(0,${-y}px,0)`; $('#top').style.opacity = y > 0 ? 0 : 1;
+    return;
+  }
   if (row.el && row.el !== first) y = clamp(row.el.offsetTop - 130, 0, Math.max(0, page.offsetHeight - 1080));
   pageY = y; page.style.transform = `translate3d(0,${-y}px,0)`;
   $('#top').style.opacity = y > 0 ? 0 : 1;
@@ -273,7 +306,9 @@ document.addEventListener('keyup', (e) => {
   longFired = false; e.preventDefault();
 });
 
-function focusStart() { const hero = rows.findIndex((r) => r.id === 'hero'); focus(hero >= 0 ? hero : Math.min(1, rows.length - 1), 0); }
+function focusStart() {
+  if (isSimple()) { const d = rows.findIndex((r) => r.id === 'dock'); focus(d >= 0 ? d : Math.min(1, rows.length - 1), 0); return; }
+  const hero = rows.findIndex((r) => r.id === 'hero'); focus(hero >= 0 ? hero : Math.min(1, rows.length - 1), 0); }
 function rebuild(keep) {
   const was = keep && rows[R] ? { id: rows[R].id, c: C } : null;
   buildHome();
@@ -416,8 +451,11 @@ window.lumaBack = () => {
   return true;
 };
 window.lumaHome = () => { if (mode === 'menu') closeMenu(); if (mode === 'set') closeSet(); if (mode === 'all') closeAll(); readData(); snap = JSON.stringify([feed, apps, tv]); rebuild(false); loadWeather(); paintNet(); };
+/** Окно получило ввод (после возврата из другого приложения): заново ставим подсветку на текущий элемент. */
+window.lumaFocus = () => { try { if (mode === 'home' || mode === 'set') focus(R, C); } catch {} };
 window.lumaResume = () => {
   paintNet();
+  if (mode === 'set') { try { bindSet(); } catch {} return; }
   if (mode !== 'home') return;
   readData(); const s = JSON.stringify([feed, apps, tv]);
   if (s !== snap) { snap = s; rebuild(true); }

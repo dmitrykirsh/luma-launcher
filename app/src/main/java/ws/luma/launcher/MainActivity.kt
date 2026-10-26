@@ -78,8 +78,15 @@ class MainActivity : Activity() {
 
     /** Нажали «Домой» уже в лаунчере: возвращаемся к началу. */
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); js("window.lumaHome && window.lumaHome()") }
-    override fun onResume() { super.onResume(); web.onResume(); js("window.lumaResume && window.lumaResume()") }
-    override fun onPause() { super.onPause(); web.onPause() }
+    private var focusWatch: Runnable? = null
+    override fun onResume() {
+        super.onResume(); web.onResume(); web.requestFocus(); js("window.lumaResume && window.lumaResume()")
+        // после «Домой» из тяжёлого приложения окно иногда не получает ввод и лаунчер не отвечает на кнопки: если фокуса нет, выводим лаунчер вперёд ещё раз
+        focusWatch?.let { web.removeCallbacks(it) }
+        val r = Runnable { if (!isFinishing && !hasWindowFocus()) try { startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)) } catch (_: Exception) {} }
+        focusWatch = r; web.postDelayed(r, 800)
+    }
+    override fun onPause() { super.onPause(); focusWatch?.let { web.removeCallbacks(it) }; web.onPause() }
 
     // «Назад» в лаунчере никогда его не закрывает
     @Deprecated("Deprecated in Java")
@@ -87,6 +94,7 @@ class MainActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) { web.requestFocus(); js("window.lumaFocus && window.lumaFocus()") }
         if (hasFocus) window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
     }
 
@@ -331,6 +339,20 @@ class MainActivity : Activity() {
 
         /** Страница отрисовала первый кадр: показываем WebView (самый первый кадр WebView иногда рисуется в неверном масштабе). */
         @JavascriptInterface fun ready() { runOnUiThread { web.postDelayed({ web.visibility = View.VISIBLE }, 120) } }
+
+        /** Лаунчер сейчас главный экран ТВ (роль HOME). */
+        @JavascriptInterface fun isDefaultHome(): Boolean = try {
+            if (android.os.Build.VERSION.SDK_INT >= 29) getSystemService(android.app.role.RoleManager::class.java).isRoleHeld(android.app.role.RoleManager.ROLE_HOME)
+            else packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName == packageName
+        } catch (_: Exception) { false }
+        /** Включена ли служба кнопки «Домой» (специальные возможности). */
+        @JavascriptInterface fun homeKeyOn(): Boolean = try {
+            (Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: "").split(":").any { it.equals("$packageName/${HomeKeyService::class.java.name}", true) }
+        } catch (_: Exception) { false }
+        /** Системный экран «Главный экран по умолчанию»: там выбирается Luma Launcher. */
+        @JavascriptInterface fun openHomeSettings() { runOnUiThread { try { startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { try { startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {} } } }
+        /** Системный экран «Специальные возможности»: там включается служба кнопки «Домой». */
+        @JavascriptInterface fun openAccessibility() { runOnUiThread { try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { try { startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {} } } }
 
         @JavascriptInterface fun driveState(): String = driveSync.state()
         @JavascriptInterface fun driveConnect() { driveSync.connectAsync() }
