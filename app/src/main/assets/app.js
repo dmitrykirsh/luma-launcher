@@ -175,7 +175,7 @@ const isSimple = () => cfg.view === 'simple';
 const GEAR = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>';
 const HERO_HTML = `<section id="hero" class="HASOFF"><div class="hbgs"></div><div class="hshade"></div><div class="hin">
     <div class="htag"></div><h1 class="htitle"></h1><div class="hmeta"></div><p class="hdesc"></p><div class="hprog"><i></i></div>
-    <div class="hbtns"><button class="btn primary f" data-a="hero:play">${'<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>'}<span>Смотреть</span></button><button class="btn f" data-a="hero:more"><span>Подробнее</span></button></div></div><div class="hdots"></div></section>`;
+    <div class="hbtns"><button class="btn primary f" data-a="hero:play">${'<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>'}<span>Смотреть</span></button><button class="btn f" data-a="hero:more"><span>Подробнее</span></button></div></div><div class="hdots"></div><div class="hup"></div></section>`;
 /** Простой вид (как на Apple TV): сверху баннер «В тренде на этой неделе» из Luma, ниже избранные приложения, ещё ниже все остальные. Без рядов и рекомендаций, только лёгкие плитки. */
 function buildHomeSimple() {
   ACTS = [];
@@ -187,7 +187,7 @@ function buildHomeSimple() {
   const all = appList(), pin = pinned(), dock = pin.length ? pin : all.slice(0, 6), inDock = new Set(dock.map((a) => a.p));
   const tiles = all.filter((a) => !inDock.has(a.p)).map((a) => appCard(a));
   tiles.push(card('app allc', { go: () => openSet('home') }, `<div class="allbox">${GEAR}</div>`, 'Настройки'));
-  let h = HERO_HTML.replace('HASOFF', has ? '' : 'off') + `<section class="sec sdock" data-id="dock"><div class="track">${dock.map((a) => appCard(a)).join('')}</div></section><h2 class="rl sgt">Все приложения</h2>`;
+  let h = HERO_HTML.replace('HASOFF', has ? '' : 'off') + `<section class="sec sdock" data-id="dock"><div class="track">${dock.map((a) => appCard(a)).join('')}</div></section>`;
   for (let i = 0; i < tiles.length; i += 6) h += `<div class="sgrid" data-id="g${i / 6}">${tiles.slice(i, i + 6).join('')}</div>`;
   $('#page').innerHTML = h;
   rows = [{ id: 'top', items: $$('#top .f') }];
@@ -250,7 +250,8 @@ function scrollPage() {
   const row = rows[R], page = $('#page'), first = $('#page .sec');
   let y = 0;
   if (isSimple()) {   // баннер и избранные всегда на экране, прокручиваются только строки «Все приложения»
-    if (/^g\d/.test(row.id || '')) y = clamp(row.el.offsetTop - 150, 0, Math.max(0, page.offsetHeight - 1080));
+    if (/^g\d/.test(row.id || '')) y = clamp(row.el.offsetTop - 130, 0, Math.max(0, page.offsetHeight - 1080));
+    document.body.classList.toggle('heroOn', row.id === 'hero');   // фокус на баннере: панель приложений уходит вниз, показываются описание и кнопки
     pageY = y; page.style.transform = `translate3d(0,${-y}px,0)`; $('#top').style.opacity = y > 0 ? 0 : 1;
     return;
   }
@@ -261,7 +262,8 @@ function scrollPage() {
 function scrollRow(row) {
   const tr = row.el && $('.track', row.el); if (!tr) return;
   const el = row.items[C], l = el.offsetLeft, w = el.offsetWidth;
-  if (l - row.sx < 96) row.sx = Math.max(0, l - 96); else if (l + w - row.sx > 1824) row.sx = l + w - 1824;
+  const lo = isSimple() ? 36 : 96, hi = isSimple() ? 1692 : 1824;
+  if (l - row.sx < lo) row.sx = Math.max(0, l - lo); else if (l + w - row.sx > hi) row.sx = l + w - hi;
   tr.style.transform = `translate3d(${-row.sx}px,0,0)`;
 }
 function scrollList(sel, step, keep) { const el = $(sel); if (el) el.style.transform = `translate3d(0,${-Math.max(0, R - keep) * step}px,0)`; }
